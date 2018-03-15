@@ -4,30 +4,73 @@
 #ifndef XMOS_CONTROL_PROTOCOL_H_
 #define XMOS_CONTROL_PROTOCOL_H_
 
-// Main commands
-#define XMOS_CMD_SYSTEM_CNTRL       1
-#define XMOS_CMD_CONFIGURE_CNTRLR   100
-#define XMOS_CMD_GET_VALUE          101
-#define XMOS_CMD_SET_VALUE          102
-#define XMOS_ACK                    250
+#include "stdint.h"
+
+enum XmosCommand
+{
+    XMOS_CMD_SYSTEM_CNTRL     = 1,
+    XMOS_CMD_CONFIGURE_CNTRLR = 100,
+    XMOS_CMD_GET_VALUE        = 101,
+    XMOS_CMD_SET_VALUE        = 102,
+    XMOS_ACK                  = 250
+};
 
 // System sub commands
-#define XMOS_SUB_CMD_STOP_RESET_SYSTEM  0
-#define XMOS_SUB_CMD_START_SYSTEM       1
-#define XMOS_SUB_CMD_STOP_SYSTEM        2
-#define XMOS_SUB_CMD_SET_TICK_RATE      3
-#define XMOS_SUB_CMD_GET_BOARD_INFO     4
+enum XmosSystemSubCommand
+{
+    XMOS_SUB_CMD_STOP_RESET_SYSTEM = 0,
+    XMOS_SUB_CMD_START_SYSTEM,
+    XMOS_SUB_CMD_STOP_SYSTEM,
+    XMOS_SUB_CMD_SET_TICK_RATE,
+    XMOS_SUB_CMD_GET_BOARD_INFO
+};
 
 // Configure sub commmands
-#define XMOS_SUB_CMD_RESET_ALL_CNTRLRS  0
-#define XMOS_SUB_CMD_RESET_CNTRLR       1
-#define XMOS_SUB_CMD_ADD_DIGITAL_OUTPUT 2
-#define XMOS_SUB_CMD_ADD_DIGITAL_INPUT  3
-#define XMOS_SUB_CMD_ADD_ANALOG_INPUT   4
-#define XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR 5
-#define XMOS_SUB_CMD_MUTE_CNTRLR        6
-#define XMOS_SUB_CMD_REMOVE_CNTRLR      7
-#define XMOS_SUB_CMD_SET_CNTRLR_RANGE   8
+enum XmosConfigSubCommand
+{
+    XMOS_SUB_CMD_RESET_ALL_CNTRLRS  = 0,
+    XMOS_SUB_CMD_RESET_CNTRLR,
+    XMOS_SUB_CMD_ADD_DIGITAL_OUTPUT,
+    XMOS_SUB_CMD_ADD_DIGITAL_INPUT,
+    XMOS_SUB_CMD_ADD_ANALOG_INPUT,
+    XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
+    XMOS_SUB_CMD_MUTE_CNTRLR,
+    XMOS_SUB_CMD_REMOVE_CNTRLR,
+    XMOS_SUB_CMD_SET_CNTRLR_RANGE
+};
+
+enum MuxInvertMode
+{
+    NOT_MUXED_ACTIVE_HIGH = 0,
+    NOT_MUXED_ACTIVE_LOW,
+    MUXED_ACTIVE_HIGH,
+    MUXED_ACTIVE_LOW
+};
+
+enum NotificationMode
+{
+    ON_VALUE_CHANGE = 0,
+    EVERY_SYSTEM_TICK,
+    EVERY_CNTRLR_TICK,
+    WHEN_TOGGLED,
+    WHEN_TOGGLED_ON,
+    WHEN_TOGGLED_OFF
+};
+
+enum InputHwType
+{
+    BINARY_INPUT = 0,
+    N_WAY_SWITCH,
+    ROTARY_ENCODER,
+    TAP_BUTTON
+};
+
+enum OutputHwType
+{
+    BINARY_OUTPUT = 0,
+    STEP_FROM_BOTTOM,
+    STEP_FROM_UP,
+};
 
 // Base message structure
 typedef struct XmosControlPacket
@@ -78,6 +121,13 @@ typedef struct AnalogInputData
     char controller_id;
     char pin_number;
 } AnalogInputData;
+
+typedef struct PinData
+{
+    char controller_id;
+    char num_pins;
+    char pins[18];
+} PinData;
 
 typedef struct ValueData
 {

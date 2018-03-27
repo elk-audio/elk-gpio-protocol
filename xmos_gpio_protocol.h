@@ -117,7 +117,7 @@ typedef enum CntrlrPolarity
 typedef struct CntrlrPolarityData
 {
     char controller_id;
-    char cntrlr_polarity;
+    char polarity;
 } CntrlrPolarityData;
 
 /*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE payload data structure  ----------*/
@@ -140,7 +140,7 @@ typedef enum NotificationMode
 typedef struct NotificationModeData
 {
     char controller_id;
-    char cntrlr_notif_mode;  
+    char notif_mode;
 } NotificationModeData;
 
 /*----------  XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR payload data structure  ----------*/
@@ -154,8 +154,8 @@ typedef struct PinsData
 /*----------  XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR payload data structure  ----------*/
 typedef enum MuteStatus
 {
-    UNMUTE_CONTROLLER = 0,
-    MUTE_CONTROLLER
+    UNMUTED = 0,
+    MUTED
 } MuteStatus;
 
 typedef struct MuteCommandData
@@ -210,8 +210,8 @@ typedef union PayloadData
     ResetCntrlrData reset_cntrlr_data;
     CntrlrData cntrlr_data;
     ControllerToMuxData cntrlr_to_mux_data;
-    CntrlrPolarity cntrlr_polarity_data;
-    CntrlrTickRateData input_cntrlr_tick_rate;
+    CntrlrPolarityData cntrlr_polarity_data;
+    CntrlrTickRateData cntrlr_tick_rate;
     NotificationModeData notif_mode_data;
     PinsData pin_data;
     MuteCommandData mute_cmnd_data;

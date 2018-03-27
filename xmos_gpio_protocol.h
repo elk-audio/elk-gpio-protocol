@@ -60,13 +60,11 @@ typedef struct BoardInfoData
 
 typedef enum XmosConfigSubCommand
 {
-    XMOS_SUB_CMD_RESET_ALL_CNTRLRS  = 0,
+    XMOS_SUB_CMD_RESET_ALL_CNTRLRS = 0,
     XMOS_SUB_CMD_RESET_CNTRLR,
-    XMOS_SUB_CMD_ADD_DIGITAL_OUTPUT,
-    XMOS_SUB_CMD_ADD_DIGITAL_INPUT,
-    XMOS_SUB_CMD_ADD_ANALOG_INPUT,
+    XMOS_SUB_CMD_ADD_CNTRLR,
     XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX,
-    XMOS_SUB_CMD_INV_CNTRLR_PINS,
+    XMOS_SUB_CMD_SET_CNTRLR_POLARITY,
     XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE,
     XMOS_SUB_CMD_SET_INPUT_CNTRLR_NOTIF_MODE,
     XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
@@ -81,41 +79,24 @@ typedef struct ResetCntrlrData
     char controller_id;
 } ResetCntrlrData;
 
-/*----------  XMOS_SUB_CMD_ADD_DIGITAL_OUTPUT payload data structure  ----------*/
-typedef enum OutputHwType
+/*----------  XMOS_SUB_CMD_ADD_CNTRLR payload data structure  ----------*/
+typedef enum HwType
 {
     BINARY_OUTPUT = 0,
+    BINARY_INPUT,
+    ANALOG_INPUT,
     STEPPED_OUTPUT,
-    MUX_OUTPUT
-} OutputHwType;
-
-typedef struct DigitalOutputData
-{
-    char controller_id;
-    char output_hw_type;
-} DigitalOutputData;
-
-/*----------  XMOS_SUB_CMD_ADD_DIGITAL_INPUT payload data structure  ----------*/
-typedef enum InputHwType
-{
-    BINARY_INPUT = 0,
+    MUX_OUTPUT,
     N_WAY_SWITCH,
     ROTARY_ENCODER,
     TAP_BUTTON
-} InputHwType;
+} HwType;
 
-typedef struct DigitalInputData
+typedef struct CntrlrData
 {
     char controller_id;
-    char input_hw_type;
-} DigitalInputData;
-
-/*----------  XMOS_SUB_CMD_ADD_ANALOG_INPUT payload data structure  ----------*/
-typedef struct AnalogInputData
-{
-    char controller_id;
-    char pin_number;
-} AnalogInputData;
+    char hw_type;
+} AddCntrlrData;
 
 /*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
 typedef struct ControllerToMuxData
@@ -125,11 +106,19 @@ typedef struct ControllerToMuxData
     char mux_controller_pin;
 } ControllerToMuxData;
 
-/*----------  XMOS_SUB_CMD_INV_CNTRLR_PINS payload data structure  ----------*/
-typedef struct InvertControllerData
+/*----------  XMOS_SUB_CMD_SET_CNTRLR_POLARITY payload data structure  ----------*/
+
+typedef enum CntrlrPolarity
+{
+    ACTIVE_HIGH,
+    ACTIVE_LOW
+} CntrlrPolarity;
+
+typedef struct CntrlrPolarityData
 {
     char controller_id;
-} InvertControllerData;
+    char cntrlr_polarity;
+} CntrlrPolarityData;
 
 /*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE payload data structure  ----------*/
 typedef struct CntrlrTickRateData
@@ -219,11 +208,9 @@ typedef union PayloadData
     BoardInfoData board_info_data;
 
     ResetCntrlrData reset_cntrlr_data;
-    DigitalOutputData digital_output_data;
-    DigitalInputData digital_input_data;
-    AnalogInputData analog_input_data;
+    CntrlrData cntrlr_data;
     ControllerToMuxData cntrlr_to_mux_data;
-    InvertControllerData inv_cntrlr_data;
+    CntrlrPolarity cntrlr_polarity_data;
     CntrlrTickRateData input_cntrlr_tick_rate;
     NotificationModeData notif_mode_data;
     PinsData pin_data;

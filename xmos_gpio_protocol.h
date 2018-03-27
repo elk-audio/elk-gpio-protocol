@@ -1,140 +1,253 @@
 /**
  * @brief Protocol definition for controlling xmos sensors
  */
-#ifndef XMOS_CONTROL_PROTOCOL_H_
-#define XMOS_CONTROL_PROTOCOL_H_
+#ifndef XMOS_GPIO_PROTOCOL_H_
+#define XMOS_GPIO_PROTOCOL_H_
 
 #include "stdint.h"
 
-enum XmosCommand
+typedef enum XmosCommand
 {
     XMOS_CMD_SYSTEM_CNTRL     = 1,
     XMOS_CMD_CONFIGURE_CNTRLR = 100,
     XMOS_CMD_GET_VALUE        = 101,
     XMOS_CMD_SET_VALUE        = 102,
     XMOS_ACK                  = 250
-};
+} XmosCommand;
 
-// System sub commands
-enum XmosSystemSubCommand
+/*==========================================================
+=          XMOS_CMD_SYSTEM_CNTRL Sub commands             =
+===========================================================*/
+
+typedef enum XmosSystemSubCommand
 {
     XMOS_SUB_CMD_STOP_RESET_SYSTEM = 0,
     XMOS_SUB_CMD_START_SYSTEM,
     XMOS_SUB_CMD_STOP_SYSTEM,
     XMOS_SUB_CMD_SET_TICK_RATE,
     XMOS_SUB_CMD_GET_BOARD_INFO
-};
+} XmosSystemSubCommand;
 
-// Configure sub commmands
-enum XmosConfigSubCommand
+/*----------  XMOS_SUB_CMD_SET_TICK_RATE payload data structure  ----------*/
+typedef enum SystemTickRate
+{
+    TICK_100_HZ = 0,
+    TICK_500_HZ,
+    TICK_1000_HZ,
+    TICK_5000_HZ
+} SystemTickRate;
+
+typedef struct TickRateData
+{
+    char system_tick_rate;
+} TickRateData;
+
+/*----------  XMOS_SUB_CMD_GET_BOARD_INFO payload data structure  ----------*/
+typedef struct BoardInfoData
+{
+    char num_digital_input_pins;
+    char num_digital_output_pins;
+    char num_analog_pins;
+    char reserved;
+    uint32_t adc_resolution;
+} BoardInfoData;
+
+/*---------------------------------------------------*/
+
+/*==========================================================
+=          XMOS_CMD_CONFIGURE_CNTRLR Sub commands             =
+===========================================================*/
+
+typedef enum XmosConfigSubCommand
 {
     XMOS_SUB_CMD_RESET_ALL_CNTRLRS  = 0,
     XMOS_SUB_CMD_RESET_CNTRLR,
     XMOS_SUB_CMD_ADD_DIGITAL_OUTPUT,
     XMOS_SUB_CMD_ADD_DIGITAL_INPUT,
     XMOS_SUB_CMD_ADD_ANALOG_INPUT,
+    XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX,
+    XMOS_SUB_CMD_INV_CNTRLR_PINS,
+    XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE,
+    XMOS_SUB_CMD_SET_INPUT_CNTRLR_NOTIF_MODE,
     XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
-    XMOS_SUB_CMD_MUTE_CNTRLR,
+    XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
     XMOS_SUB_CMD_REMOVE_CNTRLR,
     XMOS_SUB_CMD_SET_CNTRLR_RANGE
-};
+} XmosConfigSubCommand;
 
-enum MuxInvertMode
-{
-    NOT_MUXED_ACTIVE_HIGH = 0,
-    NOT_MUXED_ACTIVE_LOW,
-    MUXED_ACTIVE_HIGH,
-    MUXED_ACTIVE_LOW
-};
-
-enum NotificationMode
-{
-    ON_VALUE_CHANGE = 0,
-    EVERY_SYSTEM_TICK,
-    EVERY_CNTRLR_TICK,
-    WHEN_TOGGLED,
-    WHEN_TOGGLED_ON,
-    WHEN_TOGGLED_OFF
-};
-
-enum InputHwType
-{
-    BINARY_INPUT = 0,
-    N_WAY_SWITCH,
-    ROTARY_ENCODER,
-    TAP_BUTTON
-};
-
-enum OutputHwType
-{
-    BINARY_OUTPUT = 0,
-    STEP_FROM_BOTTOM,
-    STEP_FROM_UP,
-};
-
-// Base message structure
-typedef struct XmosControlPacket
-{
-    char     command;
-    char     sub_command;
-    char     continuation;
-    char     reserved;
-    char     payload[20];
-    uint32_t timestamp;
-    uint32_t sequence_no;
-} XmosControlPacket;
-
-// Payload is on of the following
-typedef struct ResetControllerData
+/*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
+typedef struct ResetCntrlrData
 {
     char controller_id;
-    char reserved[3];
-} ResetControllerData;
+} ResetCntrlrData;
+
+/*----------  XMOS_SUB_CMD_ADD_DIGITAL_OUTPUT payload data structure  ----------*/
+typedef enum OutputHwType
+{
+    BINARY_OUTPUT = 0,
+    STEPPED_OUTPUT,
+    MUX_OUTPUT
+} OutputHwType;
 
 typedef struct DigitalOutputData
 {
     char controller_id;
     char output_hw_type;
-    char mux_inverted;
-    char mux_controller_id;
-    char mux_controller_pin;
-    char delta_tick_rate;
-    char num_pins;
-    char pins[13];
 } DigitalOutputData;
+
+/*----------  XMOS_SUB_CMD_ADD_DIGITAL_INPUT payload data structure  ----------*/
+typedef enum InputHwType
+{
+    BINARY_INPUT = 0,
+    N_WAY_SWITCH,
+    ROTARY_ENCODER,
+    TAP_BUTTON
+} InputHwType;
 
 typedef struct DigitalInputData
 {
     char controller_id;
     char input_hw_type;
-    char mux_inverted;
-    char mux_controller_id;
-    char mux_controller_pin;
-    char delta_tick_rate;
-    char notification_mode;
-    char num_pins;
-    char pins[12];
 } DigitalInputData;
 
+/*----------  XMOS_SUB_CMD_ADD_ANALOG_INPUT payload data structure  ----------*/
 typedef struct AnalogInputData
 {
     char controller_id;
     char pin_number;
 } AnalogInputData;
 
-typedef struct PinData
+/*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
+typedef struct ControllerToMuxData
+{
+    char controller_id;
+    char mux_controller_id;
+    char mux_controller_pin;
+} ControllerToMuxData;
+
+/*----------  XMOS_SUB_CMD_INV_CNTRLR_PINS payload data structure  ----------*/
+typedef struct InvertControllerData
+{
+    char controller_id;
+} InvertControllerData;
+
+/*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE payload data structure  ----------*/
+typedef struct CntrlrTickRateData
+{
+    char controller_id;
+    char delta_tick_rate;
+} CntrlrTickRateData;
+
+/*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_NOTIF_MODE payload data structure  ----------*/
+typedef enum NotificationMode
+{
+    ON_VALUE_CHANGE = 0,
+    EVERY_CNTRLR_TICK,
+    WHEN_TOGGLED,
+    WHEN_TOGGLED_ON,
+    WHEN_TOGGLED_OFF
+} NotificationMode;
+
+typedef struct NotificationModeData
+{
+    char controller_id;
+    char cntrlr_notif_mode;  
+} NotificationModeData;
+
+/*----------  XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR payload data structure  ----------*/
+typedef struct PinsData
 {
     char controller_id;
     char num_pins;
     char pins[18];
-} PinData;
+} PinsData;
 
-typedef struct ValueData
+/*----------  XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR payload data structure  ----------*/
+typedef enum MuteStatus
+{
+    UNMUTE_CONTROLLER = 0,
+    MUTE_CONTROLLER
+} MuteStatus;
+
+typedef struct MuteCommandData
+{
+    char controller_id;
+    char mute_status;
+} MuteCommandData;
+
+/*----------  XMOS_SUB_CMD_REMOVE_CNTRLR payload data structure  ----------*/
+typedef struct RemoveCntrlrData
+{
+    char controller_id;
+} RemoveCntrlrData;
+
+/*----------  XMOS_SUB_CMD_SET_CNTRLR_RANGE payload data structure  ----------*/
+typedef struct SetCntrlrRangeData
 {
     char controller_id;
     char reserved[3];
-    uint32_t value;
-} ValueData;
+    uint32_t min_value;
+    uint32_t max_value;  
+} SetCntrlrRangeData;
+
+/*---------------------------------------------------*/
+
+/*======================================================
+=          Raspa and XMOS value data structures        =
+========================================================*/
+
+//Raspa -> XMOS
+typedef struct ValueRequest
+{
+    char controller_id;
+} ValueRequest;
+
+// XMOS -> Raspa
+typedef struct ValueSend
+{
+    char controller_id;
+    char reserved[3];
+    uint32_t controller_val;
+} ValueSend;
+
+/*---------------------------------------------------*/
+
+// Payloads are a union of the following
+typedef union PayloadData
+{
+    TickRateData tick_rate_data;
+    BoardInfoData board_info_data;
+
+    ResetCntrlrData reset_cntrlr_data;
+    DigitalOutputData digital_output_data;
+    DigitalInputData digital_input_data;
+    AnalogInputData analog_input_data;
+    ControllerToMuxData cntrlr_to_mux_data;
+    InvertControllerData inv_cntrlr_data;
+    CntrlrTickRateData input_cntrlr_tick_rate;
+    NotificationModeData notif_mode_data;
+    PinsData pin_data;
+    MuteCommandData mute_cmnd_data;
+    RemoveCntrlrData remove_cntrlr_data;
+    SetCntrlrRangeData set_cntrlr_range_data;
+
+    ValueRequest value_request_data;
+    ValueSend value_send_data;
+
+    char raw_data[20];
+} PayloadData;
 
 
-#endif // XMOS_CONTROL_PROTOCOL_H_
+// Base message structure
+typedef struct XmosGpioPacket
+{
+    char        command;
+    char        sub_command;
+    char        continuation;
+    char        reserved;
+    PayloadData payload;
+    uint32_t    timestamp;
+    uint32_t    sequence_no;
+} XmosGpioPacket;
+
+#endif // XMOS_GPIO_PROTOCOL_H_

@@ -96,7 +96,7 @@ typedef struct CntrlrData
 {
     uint8_t controller_id;
     uint8_t hw_type;
-} AddCntrlrData;
+} CntrlrData;
 
 /*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
 typedef struct ControllerToMuxData
@@ -154,8 +154,8 @@ typedef struct PinsData
 /*----------  XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR payload data structure  ----------*/
 typedef enum MuteStatus
 {
-    UNMUTED = 0,
-    MUTED
+    CNTRLR_UNMUTED = 0,
+    CNTRLR_MUTED
 } MuteStatus;
 
 typedef struct MuteCommandData

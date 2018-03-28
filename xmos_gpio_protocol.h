@@ -39,16 +39,16 @@ typedef enum SystemTickRate
 
 typedef struct TickRateData
 {
-    char system_tick_rate;
+    uint8_t system_tick_rate;
 } TickRateData;
 
 /*----------  XMOS_SUB_CMD_GET_BOARD_INFO payload data structure  ----------*/
 typedef struct BoardInfoData
 {
-    char num_digital_input_pins;
-    char num_digital_output_pins;
-    char num_analog_pins;
-    char reserved;
+    uint8_t num_digital_input_pins;
+    uint8_t num_digital_output_pins;
+    uint8_t num_analog_pins;
+    uint8_t reserved;
     uint32_t adc_resolution;
 } BoardInfoData;
 
@@ -76,7 +76,7 @@ typedef enum XmosConfigSubCommand
 /*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
 typedef struct ResetCntrlrData
 {
-    char controller_id;
+    uint8_t controller_id;
 } ResetCntrlrData;
 
 /*----------  XMOS_SUB_CMD_ADD_CNTRLR payload data structure  ----------*/
@@ -94,16 +94,16 @@ typedef enum HwType
 
 typedef struct CntrlrData
 {
-    char controller_id;
-    char hw_type;
+    uint8_t controller_id;
+    uint8_t hw_type;
 } AddCntrlrData;
 
 /*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
 typedef struct ControllerToMuxData
 {
-    char controller_id;
-    char mux_controller_id;
-    char mux_controller_pin;
+    uint8_t controller_id;
+    uint8_t mux_controller_id;
+    uint8_t mux_controller_pin;
 } ControllerToMuxData;
 
 /*----------  XMOS_SUB_CMD_SET_CNTRLR_POLARITY payload data structure  ----------*/
@@ -116,15 +116,15 @@ typedef enum CntrlrPolarity
 
 typedef struct CntrlrPolarityData
 {
-    char controller_id;
-    char polarity;
+    uint8_t controller_id;
+    uint8_t polarity;
 } CntrlrPolarityData;
 
 /*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE payload data structure  ----------*/
 typedef struct CntrlrTickRateData
 {
-    char controller_id;
-    char delta_tick_rate;
+    uint8_t controller_id;
+    uint8_t delta_tick_rate;
 } CntrlrTickRateData;
 
 /*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_NOTIF_MODE payload data structure  ----------*/
@@ -139,16 +139,16 @@ typedef enum NotificationMode
 
 typedef struct NotificationModeData
 {
-    char controller_id;
-    char notif_mode;
+    uint8_t controller_id;
+    uint8_t notif_mode;
 } NotificationModeData;
 
 /*----------  XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR payload data structure  ----------*/
 typedef struct PinsData
 {
-    char controller_id;
-    char num_pins;
-    char pins[18];
+    uint8_t controller_id;
+    uint8_t num_pins;
+    uint8_t pins[18];
 } PinsData;
 
 /*----------  XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR payload data structure  ----------*/
@@ -160,21 +160,21 @@ typedef enum MuteStatus
 
 typedef struct MuteCommandData
 {
-    char controller_id;
-    char mute_status;
+    uint8_t controller_id;
+    uint8_t mute_status;
 } MuteCommandData;
 
 /*----------  XMOS_SUB_CMD_REMOVE_CNTRLR payload data structure  ----------*/
 typedef struct RemoveCntrlrData
 {
-    char controller_id;
+    uint8_t controller_id;
 } RemoveCntrlrData;
 
 /*----------  XMOS_SUB_CMD_SET_CNTRLR_RANGE payload data structure  ----------*/
 typedef struct SetCntrlrRangeData
 {
-    char controller_id;
-    char reserved[3];
+    uint8_t controller_id;
+    uint8_t reserved[3];
     uint32_t min_value;
     uint32_t max_value;  
 } SetCntrlrRangeData;
@@ -188,14 +188,14 @@ typedef struct SetCntrlrRangeData
 //Raspa -> XMOS
 typedef struct ValueRequest
 {
-    char controller_id;
+    uint8_t controller_id;
 } ValueRequest;
 
 // XMOS -> Raspa
 typedef struct ValueSend
 {
-    char controller_id;
-    char reserved[3];
+    uint8_t controller_id;
+    uint8_t reserved[3];
     uint32_t controller_val;
 } ValueSend;
 
@@ -221,17 +221,17 @@ typedef union PayloadData
     ValueRequest value_request_data;
     ValueSend value_send_data;
 
-    char raw_data[20];
+    uint8_t raw_data[20];
 } PayloadData;
 
 
 // Base message structure
 typedef struct XmosGpioPacket
 {
-    char        command;
-    char        sub_command;
-    char        continuation;
-    char        reserved;
+    uint8_t     command;
+    uint8_t     sub_command;
+    uint8_t     continuation;
+    uint8_t     reserved;
     PayloadData payload;
     uint32_t    timestamp;
     uint32_t    sequence_no;

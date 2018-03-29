@@ -6,6 +6,12 @@
 
 #include "stdint.h"
 
+#ifdef __cplusplus
+
+#include <cassert>
+namespace xmos {
+#endif
+
 typedef enum XmosCommand
 {
     XMOS_CMD_SYSTEM_CNTRL     = 1,
@@ -176,8 +182,22 @@ typedef struct SetCntrlrRangeData
     uint8_t controller_id;
     uint8_t reserved[3];
     uint32_t min_value;
-    uint32_t max_value;  
+    uint32_t max_value;
 } SetCntrlrRangeData;
+
+typedef enum XmosReturnStatus
+{
+    OK = 0,
+    UNRECOGNIZED_COMMAND,
+    PARAMETER_ERROR,
+    INVALID_COMMAND_FOR_CNTRLR
+} XmosReturnStatus;
+
+typedef struct AckData
+{
+    uint32_t returned_seq_no;
+    uint8_t status;
+};
 
 /*---------------------------------------------------*/
 
@@ -221,6 +241,8 @@ typedef union PayloadData
     ValueRequest value_request_data;
     ValueSend value_send_data;
 
+    AckData ack_data;
+
     uint8_t raw_data[20];
 } PayloadData;
 
@@ -236,5 +258,10 @@ typedef struct XmosGpioPacket
     uint32_t    timestamp;
     uint32_t    sequence_no;
 } XmosGpioPacket;
+
+#ifdef __cplusplus
+static_assert(sizeof(XmosGpioPacket) == 32);
+} // end namespace xmos
+#endif
 
 #endif // XMOS_GPIO_PROTOCOL_H_

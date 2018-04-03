@@ -30,8 +30,7 @@ typedef enum XmosSystemSubCommand
     XMOS_SUB_CMD_STOP_RESET_SYSTEM = 0,
     XMOS_SUB_CMD_START_SYSTEM,
     XMOS_SUB_CMD_STOP_SYSTEM,
-    XMOS_SUB_CMD_SET_TICK_RATE,
-    XMOS_SUB_CMD_GET_BOARD_INFO
+    XMOS_SUB_CMD_SET_TICK_RATE
 } XmosSystemSubCommand;
 
 /*----------  XMOS_SUB_CMD_SET_TICK_RATE payload data structure  ----------*/
@@ -47,16 +46,6 @@ typedef struct TickRateData
 {
     uint8_t system_tick_rate;
 } TickRateData;
-
-/*----------  XMOS_SUB_CMD_GET_BOARD_INFO payload data structure  ----------*/
-typedef struct BoardInfoData
-{
-    uint8_t num_digital_input_pins;
-    uint8_t num_digital_output_pins;
-    uint8_t num_analog_pins;
-    uint8_t reserved;
-    uint32_t adc_resolution;
-} BoardInfoData;
 
 /*---------------------------------------------------*/
 
@@ -76,8 +65,7 @@ typedef enum XmosConfigSubCommand
     XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
     XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
     XMOS_SUB_CMD_REMOVE_CNTRLR,
-    XMOS_SUB_CMD_SET_CNTRLR_RANGE,
-    XMOS_SUB_CMD_CNTRLRS_NOT_INIT,
+    XMOS_SUB_CMD_SET_CNTRLR_RANGE
 } XmosConfigSubCommand;
 
 /*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
@@ -186,13 +174,6 @@ typedef struct SetCntrlrRangeData
     uint32_t max_value;
 } SetCntrlrRangeData;
 
-/*----------  XMOS_SUB_CMD_CNTRLRS_NOT_INIT payload data structure  ----------*/
-typedef struct CntrlrsNotInitData
-{
-    uint8_t num_cntrlrs;
-    uint8_t controller_id[19];
-} CntrlrsNotInitData;
-
 /*=====================================
 =          XMOS_ACK layout            =
 =======================================*/
@@ -200,8 +181,8 @@ typedef struct CntrlrsNotInitData
 typedef enum XmosReturnStatus
 {
     /* Generic return status */
-    ERROR = 0,
-    OK,
+    OK = 0,
+    ERROR,
     INVALID_GPIO_CMD,
     INVALID_GPIO_SUB_CMD,
     NO_CNTRLRS_ADDED,
@@ -211,6 +192,7 @@ typedef enum XmosReturnStatus
     INVALID_HW_TYPE,
     INVALID_MUX_CNTRLR,
     INVALID_CNTRLR_POLARITY,
+    NO_PINS_AVAILABLE,
     UNRECOGNIZED_COMMAND,
     PARAMETER_ERROR,
     INVALID_COMMAND_FOR_CNTRLR
@@ -248,7 +230,6 @@ typedef struct ValueSend
 typedef union PayloadData
 {
     TickRateData tick_rate_data;
-    BoardInfoData board_info_data;
 
     ResetCntrlrData reset_cntrlr_data;
     CntrlrData cntrlr_data;
@@ -260,7 +241,6 @@ typedef union PayloadData
     MuteCommandData mute_cmnd_data;
     RemoveCntrlrData remove_cntrlr_data;
     SetCntrlrRangeData set_cntrlr_range_data;
-    CntrlrsNotInitData cntrlrs_not_init_data;
 
     ValueRequest value_request_data;
     ValueSend value_send_data;
@@ -269,7 +249,6 @@ typedef union PayloadData
 
     uint8_t raw_data[20];
 } PayloadData;
-
 
 // Base message structure
 typedef struct XmosGpioPacket

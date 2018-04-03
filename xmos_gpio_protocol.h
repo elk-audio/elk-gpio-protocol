@@ -30,8 +30,7 @@ typedef enum XmosSystemSubCommand
     XMOS_SUB_CMD_STOP_RESET_SYSTEM = 0,
     XMOS_SUB_CMD_START_SYSTEM,
     XMOS_SUB_CMD_STOP_SYSTEM,
-    XMOS_SUB_CMD_SET_TICK_RATE,
-    XMOS_SUB_CMD_GET_BOARD_INFO
+    XMOS_SUB_CMD_SET_TICK_RATE
 } XmosSystemSubCommand;
 
 /*----------  XMOS_SUB_CMD_SET_TICK_RATE payload data structure  ----------*/
@@ -47,16 +46,6 @@ typedef struct TickRateData
 {
     uint8_t system_tick_rate;
 } TickRateData;
-
-/*----------  XMOS_SUB_CMD_GET_BOARD_INFO payload data structure  ----------*/
-typedef struct BoardInfoData
-{
-    uint8_t num_digital_input_pins;
-    uint8_t num_digital_output_pins;
-    uint8_t num_analog_pins;
-    uint8_t reserved;
-    uint32_t adc_resolution;
-} BoardInfoData;
 
 /*---------------------------------------------------*/
 
@@ -105,12 +94,12 @@ typedef struct CntrlrData
 } CntrlrData;
 
 /*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
-typedef struct ControllerToMuxData
+typedef struct CntrlrToMuxData
 {
     uint8_t controller_id;
     uint8_t mux_controller_id;
     uint8_t mux_controller_pin;
-} ControllerToMuxData;
+} CntrlrToMuxData;
 
 /*----------  XMOS_SUB_CMD_SET_CNTRLR_POLARITY payload data structure  ----------*/
 
@@ -185,9 +174,25 @@ typedef struct SetCntrlrRangeData
     uint32_t max_value;
 } SetCntrlrRangeData;
 
+/*=====================================
+=          XMOS_ACK layout            =
+=======================================*/
+
 typedef enum XmosReturnStatus
 {
+    /* Generic return status */
     OK = 0,
+    ERROR,
+    INVALID_GPIO_CMD,
+    INVALID_GPIO_SUB_CMD,
+    NO_CNTRLRS_ADDED,
+    UNITIALIZED_CNTRLRS,
+    INVALID_SYSTEM_TICK_RATE,
+    INVALID_CNTRLR_ID,
+    INVALID_HW_TYPE,
+    INVALID_MUX_CNTRLR,
+    INVALID_CNTRLR_POLARITY,
+    NO_PINS_AVAILABLE,
     UNRECOGNIZED_COMMAND,
     PARAMETER_ERROR,
     INVALID_COMMAND_FOR_CNTRLR
@@ -197,7 +202,7 @@ typedef struct AckData
 {
     uint32_t returned_seq_no;
     uint8_t status;
-};
+} AckData;
 
 /*---------------------------------------------------*/
 
@@ -225,11 +230,10 @@ typedef struct ValueSend
 typedef union PayloadData
 {
     TickRateData tick_rate_data;
-    BoardInfoData board_info_data;
 
     ResetCntrlrData reset_cntrlr_data;
     CntrlrData cntrlr_data;
-    ControllerToMuxData cntrlr_to_mux_data;
+    CntrlrToMuxData cntrlr_to_mux_data;
     CntrlrPolarityData cntrlr_polarity_data;
     CntrlrTickRateData cntrlr_tick_rate;
     NotificationModeData notif_mode_data;
@@ -245,7 +249,6 @@ typedef union PayloadData
 
     uint8_t raw_data[20];
 } PayloadData;
-
 
 // Base message structure
 typedef struct XmosGpioPacket

@@ -76,7 +76,8 @@ typedef enum XmosConfigSubCommand
     XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
     XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
     XMOS_SUB_CMD_REMOVE_CNTRLR,
-    XMOS_SUB_CMD_SET_CNTRLR_RANGE
+    XMOS_SUB_CMD_SET_CNTRLR_RANGE,
+    XMOS_SUB_CMD_CNTRLRS_NOT_INIT,
 } XmosConfigSubCommand;
 
 /*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
@@ -105,12 +106,12 @@ typedef struct CntrlrData
 } CntrlrData;
 
 /*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
-typedef struct ControllerToMuxData
+typedef struct CntrlrToMuxData
 {
     uint8_t controller_id;
     uint8_t mux_controller_id;
     uint8_t mux_controller_pin;
-} ControllerToMuxData;
+} CntrlrToMuxData;
 
 /*----------  XMOS_SUB_CMD_SET_CNTRLR_POLARITY payload data structure  ----------*/
 
@@ -185,9 +186,31 @@ typedef struct SetCntrlrRangeData
     uint32_t max_value;
 } SetCntrlrRangeData;
 
+/*----------  XMOS_SUB_CMD_CNTRLRS_NOT_INIT payload data structure  ----------*/
+typedef struct CntrlrsNotInitData
+{
+    uint8_t num_cntrlrs;
+    uint8_t controller_id[19];
+} CntrlrsNotInitData;
+
+/*=====================================
+=          XMOS_ACK layout            =
+=======================================*/
+
 typedef enum XmosReturnStatus
 {
-    OK = 0,
+    /* Generic return status */
+    ERROR = 0,
+    OK,
+    INVALID_GPIO_CMD,
+    INVALID_GPIO_SUB_CMD,
+    NO_CNTRLRS_ADDED,
+    UNITIALIZED_CNTRLRS,
+    INVALID_SYSTEM_TICK_RATE,
+    INVALID_CNTRLR_ID,
+    INVALID_HW_TYPE,
+    INVALID_MUX_CNTRLR,
+    INVALID_CNTRLR_POLARITY,
     UNRECOGNIZED_COMMAND,
     PARAMETER_ERROR,
     INVALID_COMMAND_FOR_CNTRLR
@@ -197,7 +220,7 @@ typedef struct AckData
 {
     uint32_t returned_seq_no;
     uint8_t status;
-};
+} AckData;
 
 /*---------------------------------------------------*/
 
@@ -229,7 +252,7 @@ typedef union PayloadData
 
     ResetCntrlrData reset_cntrlr_data;
     CntrlrData cntrlr_data;
-    ControllerToMuxData cntrlr_to_mux_data;
+    CntrlrToMuxData cntrlr_to_mux_data;
     CntrlrPolarityData cntrlr_polarity_data;
     CntrlrTickRateData cntrlr_tick_rate;
     NotificationModeData notif_mode_data;
@@ -237,6 +260,7 @@ typedef union PayloadData
     MuteCommandData mute_cmnd_data;
     RemoveCntrlrData remove_cntrlr_data;
     SetCntrlrRangeData set_cntrlr_range_data;
+    CntrlrsNotInitData cntrlrs_not_init_data;
 
     ValueRequest value_request_data;
     ValueSend value_send_data;

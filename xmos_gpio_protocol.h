@@ -65,7 +65,7 @@ typedef enum XmosConfigSubCommand
     XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
     XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
     XMOS_SUB_CMD_REMOVE_CNTRLR,
-    XMOS_SUB_CMD_SET_CNTRLR_RANGE
+    XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES
 } XmosConfigSubCommand;
 
 /*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
@@ -166,13 +166,11 @@ typedef struct RemoveCntrlrData
 } RemoveCntrlrData;
 
 /*----------  XMOS_SUB_CMD_SET_CNTRLR_RANGE payload data structure  ----------*/
-typedef struct SetCntrlrRangeData
+typedef struct AnalogCntrlrResData
 {
     uint8_t controller_id;
-    uint8_t reserved[3];
-    uint32_t min_value;
-    uint32_t max_value;
-} SetCntrlrRangeData;
+    uint8_t resolution_in_bits;
+} AnalogCntrlrResData;
 
 /*=====================================
 =          XMOS_ACK layout            =
@@ -187,12 +185,14 @@ typedef enum XmosReturnStatus
     INVALID_GPIO_SUB_CMD,
     NO_CNTRLRS_ADDED,
     UNITIALIZED_CNTRLRS,
-    INVALID_SYSTEM_TICK_RATE,
+    INVALID_TICK_RATE,
     INVALID_CNTRLR_ID,
     INVALID_HW_TYPE,
     INVALID_MUX_CNTRLR,
     INVALID_CNTRLR_POLARITY,
     NO_PINS_AVAILABLE,
+    INVALID_SHARING_OF_PINS,
+    RES_OUT_OF_RANGE,
     UNRECOGNIZED_COMMAND,
     PARAMETER_ERROR,
     INVALID_COMMAND_FOR_CNTRLR
@@ -237,10 +237,10 @@ typedef union PayloadData
     CntrlrPolarityData cntrlr_polarity_data;
     CntrlrTickRateData cntrlr_tick_rate;
     NotificationModeData notif_mode_data;
-    PinsData pin_data;
+    PinsData pins_data;
     MuteCommandData mute_cmnd_data;
     RemoveCntrlrData remove_cntrlr_data;
-    SetCntrlrRangeData set_cntrlr_range_data;
+    AnalogCntrlrResData analog_cntrlr_res_data;
 
     ValueRequest value_request_data;
     ValueSend value_send_data;

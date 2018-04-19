@@ -30,7 +30,8 @@ typedef enum XmosSystemSubCommand
     XMOS_SUB_CMD_STOP_RESET_SYSTEM = 0,
     XMOS_SUB_CMD_START_SYSTEM,
     XMOS_SUB_CMD_STOP_SYSTEM,
-    XMOS_SUB_CMD_SET_TICK_RATE
+    XMOS_SUB_CMD_SET_TICK_RATE,
+    XMOS_SUB_CMD_GET_BOARD_INFO
 } XmosSystemSubCommand;
 
 /*----------  XMOS_SUB_CMD_SET_TICK_RATE payload data structure  ----------*/
@@ -46,6 +47,14 @@ typedef struct TickRateData
 {
     uint8_t system_tick_rate;
 } TickRateData;
+
+typedef struct BoardInfoData
+{
+    uint8_t num_digital_input_pins;
+    uint8_t num_digital_output_pins;
+    uint8_t num_analog_input_pins;
+    uint8_t adc_res_in_bits;
+} BoardInfoData;
 
 /*---------------------------------------------------*/
 
@@ -65,7 +74,8 @@ typedef enum XmosConfigSubCommand
     XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
     XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
     XMOS_SUB_CMD_REMOVE_CNTRLR,
-    XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES
+    XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES,
+    XMOS_SUB_CMD_SET_CNTRLR_RANGE
 } XmosConfigSubCommand;
 
 /*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
@@ -127,9 +137,8 @@ typedef enum NotificationMode
 {
     ON_VALUE_CHANGE = 0,
     EVERY_CNTRLR_TICK,
-    WHEN_TOGGLED,
-    WHEN_TOGGLED_ON,
-    WHEN_TOGGLED_OFF
+    WHEN_TOGGLED_ON,    // Only for 1 pin binary input device
+    WHEN_TOGGLED_OFF    // Only for 1 pin binary input device
 } NotificationMode;
 
 typedef struct NotificationModeData
@@ -165,13 +174,21 @@ typedef struct RemoveCntrlrData
     uint8_t controller_id;
 } RemoveCntrlrData;
 
-/*----------  XMOS_SUB_CMD_SET_CNTRLR_RANGE payload data structure  ----------*/
+/*----------  XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES payload data structure  ----------*/
 typedef struct AnalogCntrlrResData
 {
     uint8_t controller_id;
     uint8_t resolution_in_bits;
 } AnalogCntrlrResData;
 
+/*----------  XMOS_SUB_CMD_SET_CNTRLR_RANGE payload data structure  ----------*/
+typedef struct CntrlrRangeData
+{
+    uint8_t controller_id;
+    uint8_t reserved[3];
+    uint32_t min_val;
+    uint32_t max_val;
+} CntrlrRangeData;
 /*=====================================
 =          XMOS_ACK layout            =
 =======================================*/
@@ -216,13 +233,13 @@ typedef struct ValueRequest
     uint8_t controller_id;
 } ValueRequest;
 
-// XMOS -> Raspa
-typedef struct ValueSend
+// XMOS <-> Raspa
+typedef struct ValueData
 {
     uint8_t controller_id;
     uint8_t reserved[3];
     uint32_t controller_val;
-} ValueSend;
+} ValueData;
 
 /*---------------------------------------------------*/
 
@@ -230,6 +247,7 @@ typedef struct ValueSend
 typedef union PayloadData
 {
     TickRateData tick_rate_data;
+    BoardInfoData board_info_data;
 
     ResetCntrlrData reset_cntrlr_data;
     CntrlrData cntrlr_data;
@@ -238,12 +256,13 @@ typedef union PayloadData
     CntrlrTickRateData cntrlr_tick_rate;
     NotificationModeData notif_mode_data;
     PinsData pins_data;
-    MuteCommandData mute_cmnd_data;
+    MuteCommandData mute_cmd_data;
     RemoveCntrlrData remove_cntrlr_data;
     AnalogCntrlrResData analog_cntrlr_res_data;
+    CntrlrRangeData cntrlr_range_data;
 
     ValueRequest value_request_data;
-    ValueSend value_send_data;
+    ValueData value_data;
 
     AckData ack_data;
 

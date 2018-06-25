@@ -75,7 +75,8 @@ typedef enum XmosConfigSubCommand
     XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
     XMOS_SUB_CMD_REMOVE_CNTRLR,
     XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES,
-    XMOS_SUB_CMD_SET_CNTRLR_RANGE
+    XMOS_SUB_CMD_SET_CNTRLR_RANGE,
+    XMOS_SUB_CMD_SET_CNTRLR_DEBOUNCE_MODE
 } XmosConfigSubCommand;
 
 /*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
@@ -93,8 +94,7 @@ typedef enum HwType
     STEPPED_OUTPUT,
     MUX_OUTPUT,
     N_WAY_SWITCH,
-    ROTARY_ENCODER,
-    TAP_BUTTON
+    ROTARY_ENCODER
 } HwType;
 
 typedef struct CntrlrData
@@ -189,6 +189,19 @@ typedef struct CntrlrRangeData
     uint32_t min_val;
     uint32_t max_val;
 } CntrlrRangeData;
+
+typedef enum CntrlrDebounceMode
+{
+    CNTRLR_DEBOUNCE_ENABLED,
+    CNTRLR_DEBOUNCE_DISABLED,
+} CntrlrDebounceMode;
+
+typedef struct CntrlrDebounceData
+{
+    uint8_t controller_id;
+    uint8_t cntrlr_debounce_mode;
+} CntrlrDebounceData;
+
 /*=====================================
 =          XMOS_ACK layout            =
 =======================================*/
@@ -260,6 +273,7 @@ typedef union PayloadData
     RemoveCntrlrData remove_cntrlr_data;
     AnalogCntrlrResData analog_cntrlr_res_data;
     CntrlrRangeData cntrlr_range_data;
+    CntrlrDebounceData cntrlr_debounce_data;
 
     ValueRequest value_request_data;
     ValueData value_data;

@@ -1,5 +1,5 @@
 /**
- * @brief Protocol definition for controlling xmos sensors
+ * @brief Protocol definition for controlling GPIO sensors
  */
 #ifndef XMOS_GPIO_PROTOCOL_H_
 #define XMOS_GPIO_PROTOCOL_H_
@@ -12,273 +12,270 @@
 namespace xmos {
 #endif
 
-typedef enum XmosCommand
+typedef enum GpioCommand
 {
-    XMOS_CMD_SYSTEM_CNTRL     = 1,
-    XMOS_CMD_CONFIGURE_CNTRLR = 100,
-    XMOS_CMD_GET_VALUE        = 101,
-    XMOS_CMD_SET_VALUE        = 102,
-    XMOS_ACK                  = 250
-} XmosCommand;
+    GPIO_CMD_SYSTEM_CONTROL = 1,
+    GPIO_CMD_CONFIG_CONTROLLER = 100,
+    GPIO_CMD_GET_VALUE = 101,
+    GPIO_CMD_SET_VALUE = 102,
+    GPIO_ACK = 250
+} GpioCommand;
 
 /*==========================================================
-=          XMOS_CMD_SYSTEM_CNTRL Sub commands             =
+=          GPIO_CMD_SYSTEM_CONTROL Sub commands            =
 ===========================================================*/
 
-typedef enum XmosSystemSubCommand
+typedef enum GpioSystemSubCommand
 {
-    XMOS_SUB_CMD_STOP_RESET_SYSTEM = 0,
-    XMOS_SUB_CMD_START_SYSTEM,
-    XMOS_SUB_CMD_STOP_SYSTEM,
-    XMOS_SUB_CMD_SET_TICK_RATE,
-    XMOS_SUB_CMD_GET_BOARD_INFO
-} XmosSystemSubCommand;
+    GPIO_SUB_CMD_STOP_RESET_SYSTEM = 0,
+    GPIO_SUB_CMD_START_SYSTEM,
+    GPIO_SUB_CMD_STOP_SYSTEM,
+    GPIO_SUB_CMD_SET_SYSTEM_TICK_RATE,
+    GPIO_SUB_CMD_GET_BOARD_INFO
+} GpioSystemSubCommand;
 
-/*----------  XMOS_SUB_CMD_SET_TICK_RATE payload data structure  ----------*/
-typedef enum SystemTickRate
+/*----------  GPIO_SUB_CMD_SET_TICK_RATE payload data structure  ----------*/
+typedef enum GpioSystemTickRate
 {
-    TICK_100_HZ = 0,
-    TICK_500_HZ,
-    TICK_1000_HZ,
-    TICK_5000_HZ
-} SystemTickRate;
+    GPIO_SYSTEM_TICK_100_HZ = 0,
+    GPIO_SYSTEM_TICK_500_HZ,
+    GPIO_SYSTEM_TICK_1000_HZ,
+    GPIO_SYSTEM_TICK_5000_HZ
+} GpioSystemTickRate;
 
-typedef struct TickRateData
+typedef struct SystemTickRateData
 {
-    uint8_t system_tick_rate;
-} TickRateData;
+    uint8_t gpio_system_tick_rate;
+} SystemTickRateData;
 
-typedef struct BoardInfoData
+typedef struct GpioBoardInfoData
 {
     uint8_t num_digital_input_pins;
     uint8_t num_digital_output_pins;
     uint8_t num_analog_input_pins;
     uint8_t adc_res_in_bits;
-} BoardInfoData;
+} GpioBoardInfoData;
 
 /*---------------------------------------------------*/
 
 /*==========================================================
-=          XMOS_CMD_CONFIGURE_CNTRLR Sub commands             =
+=          GPIO_CMD_CONFIG_CONTROLLER Sub commands         =
 ===========================================================*/
 
-typedef enum XmosConfigSubCommand
+typedef enum GpioConfigSubCommand
 {
-    XMOS_SUB_CMD_RESET_ALL_CNTRLRS = 0,
-    XMOS_SUB_CMD_RESET_CNTRLR,
-    XMOS_SUB_CMD_ADD_CNTRLR,
-    XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX,
-    XMOS_SUB_CMD_SET_CNTRLR_POLARITY,
-    XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE,
-    XMOS_SUB_CMD_SET_INPUT_CNTRLR_NOTIF_MODE,
-    XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR,
-    XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR,
-    XMOS_SUB_CMD_REMOVE_CNTRLR,
-    XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES,
-    XMOS_SUB_CMD_SET_CNTRLR_RANGE,
-    XMOS_SUB_CMD_SET_CNTRLR_DEBOUNCE_MODE
-} XmosConfigSubCommand;
+    GPIO_SUB_CMD_RESET_ALL_CONTROLLERS = 0,
+    GPIO_SUB_CMD_RESET_CONTROLLER,
+    GPIO_SUB_CMD_ADD_CONTROLLER,
+    GPIO_SUB_CMD_ATTACH_CONTROLLER_TO_MUX,
+    GPIO_SUB_CMD_SET_CONTROLLER_POLARITY,
+    GPIO_SUB_CMD_SET_INPUT_CONTROLLER_TICK_RATE,
+    GPIO_SUB_CMD_SET_INPUT_CONTROLLER_NOTIF_MODE,
+    GPIO_SUB_CMD_ADD_PINS_TO_CONTROLLER,
+    GPIO_SUB_CMD_MUTE_UNMUTE_CONTROLLER,
+    GPIO_SUB_CMD_REMOVE_CONTROLLER,
+    GPIO_SUB_CMD_SET_ANALOG_CONTROLLER_RES,
+    GPIO_SUB_CMD_SET_CONTROLLER_RANGE,
+    GPIO_SUB_CMD_SET_CONTROLLER_DEBOUNCE_MODE
+} GpioConfigSubCommand;
 
-/*----------  XMOS_SUB_CMD_RESET_CNTRLR payload data structure  ----------*/
-typedef struct ResetCntrlrData
-{
-    uint8_t controller_id;
-} ResetCntrlrData;
-
-/*----------  XMOS_SUB_CMD_ADD_CNTRLR payload data structure  ----------*/
-typedef enum HwType
-{
-    BINARY_OUTPUT = 0,
-    BINARY_INPUT,
-    ANALOG_INPUT,
-    STEPPED_OUTPUT,
-    MUX_OUTPUT,
-    N_WAY_SWITCH,
-    ROTARY_ENCODER
-} HwType;
-
-typedef struct CntrlrData
+/*----------  GPIO_SUB_CMD_RESET_CONTROLLER payload data structure  ----------*/
+typedef struct ResetControllerData
 {
     uint8_t controller_id;
-    uint8_t hw_type;
-} CntrlrData;
+} ResetControllerData;
 
-/*----------  XMOS_SUB_CMD_ADD_CNTRLR_TO_MUX payload data structure  ----------*/
-typedef struct CntrlrToMuxData
+/*----------  GPIO_SUB_CMD_ADD_CONTROLLER payload data structure  ----------*/
+typedef enum GpioHwType
+{
+    GPIO_BINARY_OUTPUT = 0,
+    GPIO_BINARY_INPUT,
+    GPIO_ANALOG_INPUT,
+    GPIO_STEPPED_OUTPUT,
+    GPIO_MUX_OUTPUT,
+    GPIO_N_WAY_SWITCH,
+    GPIO_ROTARY_ENCODER
+} GpioHwType;
+
+typedef struct AddControllerData
+{
+    uint8_t controller_id;
+    uint8_t gpio_hw_type;
+} AddControllerData;
+
+/*----------  GPIO_SUB_CMD_ATTACH_CONTROLLER_TO_MUX payload data structure  ----------*/
+typedef struct ControllerToMuxData
 {
     uint8_t controller_id;
     uint8_t mux_controller_id;
     uint8_t mux_controller_pin;
-} CntrlrToMuxData;
+} ControllerToMuxData;
 
-/*----------  XMOS_SUB_CMD_SET_CNTRLR_POLARITY payload data structure  ----------*/
-
-typedef enum CntrlrPolarity
+/*----------  GPIO_SUB_CMD_SET_CONTROLLER_POLARITY payload data structure  ----------*/
+typedef enum ControllerPolarity
 {
-    ACTIVE_HIGH,
-    ACTIVE_LOW
-} CntrlrPolarity;
+    GPIO_ACTIVE_HIGH,
+    GPIO_ACTIVE_LOW
+} ControllerPolarity;
 
-typedef struct CntrlrPolarityData
+typedef struct ControllerPolarityData
 {
     uint8_t controller_id;
     uint8_t polarity;
-} CntrlrPolarityData;
+} ControllerPolarityData;
 
-/*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_TICK_RATE payload data structure  ----------*/
-typedef struct CntrlrTickRateData
+/*----------  GPIO_SUB_CMD_SET_INPUT_CONTROLLER_TICK_RATE payload data structure  ----------*/
+typedef struct ControllerTickRateData
 {
     uint8_t controller_id;
     uint8_t delta_tick_rate;
-} CntrlrTickRateData;
+} ControllerTickRateData;
 
-/*----------  XMOS_SUB_CMD_SET_INPUT_CNTRLR_NOTIF_MODE payload data structure  ----------*/
-typedef enum NotificationMode
+/*----------  GPIO_SUB_CMD_SET_INPUT_CONTROLLER_NOTIF_MODE payload data structure  ----------*/
+typedef enum ControllerNotifMode
 {
-    ON_VALUE_CHANGE = 0,
-    EVERY_CNTRLR_TICK,
-    WHEN_TOGGLED_ON,    // Only for 1 pin binary input device
-    WHEN_TOGGLED_OFF    // Only for 1 pin binary input device
-} NotificationMode;
+    GPIO_ON_VALUE_CHANGE = 0,
+    GPIO_EVERY_CONTROLLER_TICK,
+    GPIO_WHEN_TOGGLED_ON,    // Only for 1 pin binary input device
+    GPIO_WHEN_TOGGLED_OFF    // Only for 1 pin binary input device
+} ControllerNotifMode;
 
-typedef struct NotificationModeData
+typedef struct ControllerNotifData
 {
     uint8_t controller_id;
     uint8_t notif_mode;
-} NotificationModeData;
+} ControllerNotifData;
 
-/*----------  XMOS_SUB_CMD_ADD_PINS_TO_CNTRLR payload data structure  ----------*/
-typedef struct PinsData
+/*----------  GPIO_SUB_CMD_ADD_PINS_TO_CONTROLLER payload data structure  ----------*/
+typedef struct ControllerPinsData
 {
     uint8_t controller_id;
     uint8_t num_pins;
     uint8_t pins[18];
-} PinsData;
+} ControllerPinsData;
 
-/*----------  XMOS_SUB_CMD_MUTE_UNMUTE_CNTRLR payload data structure  ----------*/
-typedef enum MuteStatus
+/*----------  GPIO_SUB_CMD_MUTE_UNMUTE_CONTROLLER payload data structure  ----------*/
+typedef enum ControllerMuteStatus
 {
-    CNTRLR_UNMUTED = 0,
-    CNTRLR_MUTED
-} MuteStatus;
+    GPIO_CONTROLLER_UNMUTED = 0,
+    GPIO_CONTROLLER_MUTED
+} ControllerMuteStatus;
 
-typedef struct MuteCommandData
+typedef struct ControllerMuteData
 {
     uint8_t controller_id;
     uint8_t mute_status;
-} MuteCommandData;
+} ControllerMuteData;
 
-/*----------  XMOS_SUB_CMD_REMOVE_CNTRLR payload data structure  ----------*/
-typedef struct RemoveCntrlrData
+/*----------  GPIO_SUB_CMD_REMOVE_CONTROLLER payload data structure  ----------*/
+typedef struct RemoveControllerData
 {
     uint8_t controller_id;
-} RemoveCntrlrData;
+} RemoveControllerData;
 
-/*----------  XMOS_SUB_CMD_SET_ANALOG_CNTRLR_RES payload data structure  ----------*/
-typedef struct AnalogCntrlrResData
+/*----------  GPIO_SUB_CMD_SET_ANALOG_CONTROLLER_RES payload data structure  ----------*/
+typedef struct AnalogControllerResData
 {
     uint8_t controller_id;
-    uint8_t resolution_in_bits;
-} AnalogCntrlrResData;
+    uint8_t res_in_bits;
+} AnalogControllerResData;
 
-/*----------  XMOS_SUB_CMD_SET_CNTRLR_RANGE payload data structure  ----------*/
-typedef struct CntrlrRangeData
+/*----------  GPIO_SUB_CMD_SET_CONTROLLER_RANGE payload data structure  ----------*/
+typedef struct ControllerRangeData
 {
     uint8_t controller_id;
     uint8_t reserved[3];
     uint32_t min_val;
     uint32_t max_val;
-} CntrlrRangeData;
+} ControllerRangeData;
 
-typedef enum CntrlrDebounceMode
+typedef enum ControllerDebounceMode
 {
-    CNTRLR_DEBOUNCE_ENABLED,
-    CNTRLR_DEBOUNCE_DISABLED,
-} CntrlrDebounceMode;
+    GPIO_CONTROLLER_DEBOUNCE_ENABLED,
+    GPIO_CONTROLLER_DEBOUNCE_DISABLED,
+} ControllerDebounceMode;
 
-typedef struct CntrlrDebounceData
+typedef struct ControllerDebounceData
 {
     uint8_t controller_id;
-    uint8_t cntrlr_debounce_mode;
-} CntrlrDebounceData;
+    uint8_t controller_debounce_mode;
+} ControllerDebounceData;
 
 /*=====================================
 =          XMOS_ACK layout            =
 =======================================*/
 
-typedef enum XmosReturnStatus
+typedef enum GpioReturnStatus
 {
-    /* Generic return status */
-    OK = 0,
-    ERROR,
-    INVALID_GPIO_CMD,
-    INVALID_GPIO_SUB_CMD,
-    NO_CNTRLRS_ADDED,
-    UNITIALIZED_CNTRLRS,
-    INVALID_TICK_RATE,
-    INVALID_CNTRLR_ID,
-    INVALID_HW_TYPE,
-    INVALID_MUX_CNTRLR,
-    INVALID_CNTRLR_POLARITY,
-    NO_PINS_AVAILABLE,
-    INVALID_SHARING_OF_PINS,
-    RES_OUT_OF_RANGE,
-    UNRECOGNIZED_COMMAND,
-    PARAMETER_ERROR,
-    INVALID_COMMAND_FOR_CNTRLR
-} XmosReturnStatus;
+    GPIO_OK = 0,
+    GPIO_ERROR,
+    GPIO_INVALID_CMD,
+    GPIO_INVALID_SUB_CMD,
+    GPIO_NO_CONTROLLERS_ADDED,
+    GPIO_UNITIALIZED_CONTROLLERS,
+    GPIO_INVALID_TICK_RATE,
+    GPIO_INVALID_CONTROLLER_ID,
+    GPIO_INVALID_HW_TYPE,
+    GPIO_INVALID_MUX_CONTROLLER,
+    GPIO_INVALID_CONTROLLER_POLARITY,
+    GPIO_NO_PINS_AVAILABLE,
+    GPIO_INVALID_SHARING_OF_PINS,
+    GPIO_RES_OUT_OF_RANGE,
+    GPIO_UNRECOGNIZED_CMD,
+    GPIO_PARAMETER_ERROR,
+    GPIO_INVALID_COMMAND_FOR_CONTROLLER
+} GpioReturnStatus;
 
-typedef struct AckData
+typedef struct GpioAckData
 {
     uint32_t returned_seq_no;
-    uint8_t status;
-} AckData;
+    uint8_t gpio_return_status;
+} GpioAckData;
 
 /*---------------------------------------------------*/
 
 /*======================================================
-=          Raspa and XMOS value data structures        =
+=     Controller value exchange data structures        =
 ========================================================*/
-
-//Raspa -> XMOS
-typedef struct ValueRequest
+/* Master to Slave */
+typedef struct GpioValueRequest
 {
     uint8_t controller_id;
-} ValueRequest;
+} GpioValueRequest;
 
-// XMOS <-> Raspa
-typedef struct ValueData
+/* Slave to Master */
+typedef struct GpioValueData
 {
     uint8_t controller_id;
     uint8_t reserved[3];
     uint32_t controller_val;
-} ValueData;
+} GpioValueData;
 
 /*---------------------------------------------------*/
 
 // Payloads are a union of the following
 typedef union PayloadData
 {
-    TickRateData tick_rate_data;
-    BoardInfoData board_info_data;
+    SystemTickRateData system_tick_rate_data;
+    GpioBoardInfoData gpio_board_info_data;
 
-    ResetCntrlrData reset_cntrlr_data;
-    CntrlrData cntrlr_data;
-    CntrlrToMuxData cntrlr_to_mux_data;
-    CntrlrPolarityData cntrlr_polarity_data;
-    CntrlrTickRateData cntrlr_tick_rate;
-    NotificationModeData notif_mode_data;
-    PinsData pins_data;
-    MuteCommandData mute_cmd_data;
-    RemoveCntrlrData remove_cntrlr_data;
-    AnalogCntrlrResData analog_cntrlr_res_data;
-    CntrlrRangeData cntrlr_range_data;
-    CntrlrDebounceData cntrlr_debounce_data;
+    ResetControllerData reset_controller_data;
+    AddControllerData add_controller_data;
+    ControllerToMuxData controller_to_mux_data;
+    ControllerPolarityData controller_polarity_data;
+    ControllerTickRateData controller_tick_rate;
+    ControllerNotifData controller_notif_data;
+    ControllerPinsData controller_pins_data;
+    ControllerMuteData controller_mute_data;
+    RemoveControllerData remove_controller_data;
+    AnalogControllerResData analog_controller_res_data;
+    ControllerRangeData controller_range_data;
+    ControllerDebounceData controller_debounce_data;
 
-    ValueRequest value_request_data;
-    ValueData value_data;
+    GpioValueRequest gpio_value_request;
+    GpioValueData gpio_value_data;
 
-    AckData ack_data;
+    GpioAckData gpio_ack_data;
 
     uint8_t raw_data[20];
 } PayloadData;

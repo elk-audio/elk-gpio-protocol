@@ -94,7 +94,8 @@ typedef enum GpioHwType
     GPIO_STEPPED_OUTPUT,
     GPIO_MUX_OUTPUT,
     GPIO_N_WAY_SWITCH,
-    GPIO_ROTARY_ENCODER
+    GPIO_ROTARY_ENCODER,
+    GPIO_AUDIO_MUTE_BUTTON
 } GpioHwType;
 
 typedef struct AddControllerData

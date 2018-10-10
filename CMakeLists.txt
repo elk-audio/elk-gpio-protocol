@@ -1,0 +1,2 @@
+add_library(xmos_protocol INTERFACE)
+target_include_directories(xmos_protocol INTERFACE include)

@@ -1,15 +1,15 @@
 /**
  * @brief Protocol definition for controlling GPIO sensors
  */
-#ifndef XMOS_GPIO_PROTOCOL_H_
-#define XMOS_GPIO_PROTOCOL_H_
+#ifndef GPIO_PROTOCOL_H_
+#define GPIO_PROTOCOL_H_
 
 #include "stdint.h"
 
 #ifdef __cplusplus
 
 #include <cassert>
-namespace xmos {
+namespace gpio {
 #endif
 
 typedef enum GpioCommand
@@ -203,7 +203,7 @@ typedef struct ControllerDebounceData
 } ControllerDebounceData;
 
 /*=====================================
-=          XMOS_ACK layout            =
+=          GPIO_ACK layout            =
 =======================================*/
 
 typedef enum GpioReturnStatus
@@ -282,7 +282,7 @@ typedef union PayloadData
 } PayloadData;
 
 // Base message structure
-typedef struct XmosGpioPacket
+typedef struct GpioPacket
 {
     uint8_t     command;
     uint8_t     sub_command;
@@ -291,11 +291,11 @@ typedef struct XmosGpioPacket
     PayloadData payload;
     uint32_t    timestamp;
     uint32_t    sequence_no;
-} XmosGpioPacket;
+} GpioPacket;
 
 #ifdef __cplusplus
-static_assert(sizeof(XmosGpioPacket) == 32);
-} // end namespace xmos
+static_assert(sizeof(GpioPacket) == 32);
+} // end namespace gpio
 #endif
 
-#endif // XMOS_GPIO_PROTOCOL_H_
+#endif // GPIO_PROTOCOL_H_

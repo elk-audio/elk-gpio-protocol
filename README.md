@@ -1,0 +1,1 @@
+# Gpio ProtocolProtocol and library to control Gpios in Elk Audio OS devices. Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm

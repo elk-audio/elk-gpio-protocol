@@ -1,3 +1,22 @@
+/*
+ * Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk
+ * Gpio Protocol is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Gpio Protocol is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Gpio Protocol. If not, see http://www.gnu.org/licenses/ .
+ */
+
+/**
+ * @brief File which contains the logic for handling digital input controllers.
+ */
 #ifndef INPUT_CTRLR_H_
 #define INPUT_CTLRL_H_
 
@@ -17,12 +36,24 @@ constexpr uint32_t ENC_CCW_TRANSITION_SNAPSHOT_ACTIVE_HIGH = 0x4B;
 constexpr uint32_t ENC_CW_TRANSITION_SNAPSHOT_ACTIVE_LOW =  0x4B;
 constexpr uint32_t ENC_CCW_TRANSITION_SNAPSHOT_ACTIVE_LOW = 0x87;
 
+/**
+ * @brief Class which contains the logic for digital input controllers.
+ * @tparam NumInputPins the number of digital input pins on the board
+ */
 template <int NumInputPins>
 class InputCtrlr
 {
 public:
     static_assert(NumInputPins != 0);
 
+    /**
+     * @brief Function to set internal system information. This function should
+     *        be called after instantiation.
+     * @param pin_data The pointer to the memory location containing the
+     *                 sampled data of the digital input pins.
+     * @param current_system_tick Pointer to the system tick counter.
+     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
+     */
     inline void set_system_info(uint32_t* const pin_data,
                                 const uint32_t* current_system_tick,
                                 GpioTxPacketFifo* tx_packet_fifo)
@@ -32,6 +63,9 @@ public:
         _tx_packet_fifo = tx_packet_fifo;
     }
 
+    /**
+     * @brief Initialize this digital input controller to its default state.
+     */
     inline void init()
     {
         _id = 0;
@@ -55,16 +89,29 @@ public:
         _enc_ccw_transition_val = ENC_CCW_TRANSITION_SNAPSHOT_ACTIVE_HIGH;
     }
 
+    /**
+     * @brief Get the id of this digital input controller
+     * @return The id of this digital input controller
+     */
     inline int get_id()
     {
         return _id;
     }
 
+    /**
+     * @brief Check if this digital input controller is active
+     * @return True if active, false if not
+     */
     inline bool is_active()
     {
         return _is_active;
     }
 
+    /**
+     * @brief Check if this digital input controller has been initialized, i.e if it
+     *        has received all necessary information.
+     * @return True if ok, false if not.
+     */
     inline bool is_init()
     {
         switch(_hw_type)
@@ -107,6 +154,15 @@ public:
         return true;
     }
 
+    /**
+     * @brief Iterate through a list of used digital input pins and check if this
+     *        digital input controller's pin is duplicated. If not, then add it
+     *        to the used pin list.
+     * @param used_input_pin_list A list of all used digital input pins.
+     * @param total_num_used_pins The total number of digital input pins used in
+     *        the list.
+     * @return True if duplicated, false if not.
+     */
     inline bool check_duplicated_pins(std::array<uint32_t, NumInputPins>& used_input_pin_list,
                                       int& total_num_used_pins)
     {
@@ -138,6 +194,11 @@ public:
         return false;
     }
 
+    /**
+     * @brief Activate this digital input controller
+     * @param id The new id of this controller
+     * @param type The hw type of this digital input controller
+     */
     inline void set_ctrlr_info(int id, GpioHwType type)
     {
         init();
@@ -149,6 +210,9 @@ public:
         reset_val();
     }
 
+    /**
+     * @brief Reset the value of this digital input controller to its default.
+     */
     inline void reset_val()
     {
         _next_ctrlr_tick = *_current_system_tick + _tick_rate;
@@ -173,6 +237,18 @@ public:
         }
     }
 
+    /**
+     * @brief Attach this digital controller to a mux controller.
+     * @param mux_ctrlr_intf The mux controller's interface
+     * @param mux_pin The pin of the mux controller which is associated with this
+     *        digital input controller
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if this digital input controller
+     *         is of type rotary encoder
+     *         GPIO_INVALID_MUX_CONTROLLER if mux controller if it is an invalid
+     *         mux controller or mux pin.
+     *         GPIO_OK otherwise.
+     *
+     */
     inline GpioReturnStatus attach_to_mux(MuxCtrlrInterface* const mux_ctrlr_intf, int mux_pin)
     {
         if(_hw_type == GPIO_ROTARY_ENCODER)
@@ -199,6 +275,11 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the polarity of this digital input controller.
+     * @param pol The new polarity.
+     * @return GPIO_OK always
+     */
     inline GpioReturnStatus set_pol(ControllerPolarity pol)
     {
         if(pol == GPIO_ACTIVE_LOW)
@@ -216,6 +297,13 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the tick rate of this digital input controller.
+     * @param tick_rate The new tick rate.
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if this digital input controller
+     *         is of type rotary encoder
+     *         GPIO_OK otherwise
+     */
     inline GpioReturnStatus set_tick_rate(int tick_rate)
     {
         if(_hw_type == GPIO_ROTARY_ENCODER)
@@ -231,6 +319,15 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the notification mode of this digital input controller
+     * @param notif_mode the new notification mode
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if hwype is either
+     *         GPIO_ROTARY_ENCODER or GPIO_N_WAY_SWITCH and notif mode is either
+     *         GPIO_WHEN_TOGGLED_ON or GPIO_WHEN_TOGGLED_OFF
+     *
+     *         GPIO_OK otherwise
+     */
     inline GpioReturnStatus set_notif_mode(ControllerNotifMode notif_mode)
     {
         switch (_hw_type)
@@ -256,6 +353,15 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Add pins to this digital input controller
+     * @param num_pins The number of pins to add.
+     * @param pin_list Pointer to the list of pins to be added.
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if more than 2 pins are added
+     *         to a hwtype of rotary encoder.
+     *         GPIO_NO_PINS_AVAILABLE when no more pins are available.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus add_pins(int num_pins,
                                      const uint8_t* const pin_list)
     {
@@ -304,6 +410,11 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the mute status of this digital input controller
+     * @param mute_status the mute status.
+     * @return GPIO_OK always
+     */
     inline GpioReturnStatus set_mute_status(ControllerMuteStatus mute_status)
     {
         if(mute_status == GPIO_CONTROLLER_MUTED)
@@ -317,6 +428,14 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the input range for this digital input controller.
+     * @param min_val The minimum value
+     * @param max_val The maximum value
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if hwtype is not a rotary
+     *         encoder.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus set_range(uint32_t min_val, uint32_t max_val)
     {
         if(_hw_type != GPIO_ROTARY_ENCODER)
@@ -332,6 +451,13 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Enable or disable debounce for this input controller
+     * @param debounce_mode The Debounce mode
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if this digital input controller
+     *         is of hw type Rotary Encoder.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus set_debounce_mode(ControllerDebounceMode debounce_mode)
     {
         if(_hw_type == GPIO_ROTARY_ENCODER)
@@ -349,11 +475,23 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Get this controllers value
+     * @return The controller value.
+     */
     inline uint32_t get_val()
     {
         return _val;
     }
 
+    /**
+     * @brief Set the value of this input controller. This can be used to set
+     *        up the initial condition of this controller, however, the value
+     *        will be overwritten once this controller has been processed.
+     * @param val The new value of this analog controller.
+     * @return GPIO_PARAMETER_ERROR if value is over the range of the controller.
+     *         GPIO_OK otherwise
+ */
     inline GpioReturnStatus set_val(uint32_t val)
     {
         if(val > _max_val)
@@ -369,6 +507,9 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Process this digital input controller,
+     */
     inline void process()
     {
         if(*_current_system_tick != _next_ctrlr_tick)
@@ -411,12 +552,20 @@ public:
     }
 
 private:
+    /**
+     * @brief Helper function to set or clear bits in the controllers value.
+     * @param bit_pos The bit vosition
+     * @param bit_value The bit value
+     */
     inline void _write_bit_in_val(uint32_t bit_pos, uint32_t bit_value)
     {
         uint32_t bit_mask = (0x1 << bit_pos);
         _val = (_val & ~bit_mask) | (bit_value << bit_pos);
     }
 
+    /**
+     * @brief Process the controller depending on the notification mode.
+     */
     inline void _process_notif_mode()
     {
         switch (_notif_mode)
@@ -468,6 +617,9 @@ private:
         }
     }
 
+    /**
+     * @brief Process controllers of type binary input
+     */
     inline void _process_binary_input()
     {
         for(int pin_index = 0; pin_index < _num_pins_used; pin_index++)
@@ -503,6 +655,9 @@ private:
         _process_notif_mode();
     }
 
+    /**
+     * @brief Process controllers of type n way switch input
+     */
     inline void _process_n_way_switch()
     {
         for(int pin_index = 0; pin_index < _num_pins_used; pin_index++)
@@ -528,6 +683,9 @@ private:
         _process_notif_mode();
     }
 
+    /**
+     * @brief Process controllers of type rotary encoders
+     */
     inline void _process_rotary_encoder()
     {
         uint32_t pin_val_A =  _pin_data[_pin_nums[0]];
@@ -554,7 +712,6 @@ private:
             if(_val != _max_val)
             {
                 _val++;
-                //_log_fifo.log_info("%d",_val);
             }
         }
         // Decrement data if snapshot matches CCW snapshot
@@ -565,7 +722,6 @@ private:
             if(_val != _min_val)
             {
                 _val--;
-                //_log_fifo.log_info("%d",_val);
             }
         }
 

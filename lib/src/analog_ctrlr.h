@@ -1,3 +1,23 @@
+/*
+ * Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk
+ * Gpio Protocol is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Gpio Protocol is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Gpio Protocol. If not, see http://www.gnu.org/licenses/ .
+ */
+
+/**
+ * Contains the implementation of the AanalogCtrlr class which performs the
+ * logic of analog controllers
+ */
 #ifndef ANALOG_CTRLR_H_
 #define ANALOG_CTRLR_H_
 
@@ -12,12 +32,25 @@ constexpr float DEFAULT_ANALOG_FILTER_TIME_CONSTANT = 0.020; //20 ms
 constexpr int DEFUALT_ADC_SAMPLING_FREQ = 250;
 constexpr int NUM_FILTER_WARMUP_ITERATIONS = 300;
 
+/**
+ * @brief Class which contains the logic for analog input controllers.
+ * @tparam NumAnalogPins the number of analog pins on the board
+ */
 template <int NumAnalogPins>
 class AnalogCtrlr
 {
 public:
     static_assert(NumAnalogPins != 0);
 
+    /**
+     * @brief Function to set internal system information. This function should
+     *        be called after instantiation.
+     * @param pin_data The pointer to the memory location containing the
+     *                 sampled data of the analog pins.
+     * @param current_system_tick Pointer to the system tick counter.
+     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
+     * @param adc_chans_per_tick Number of adc channels sampled per system tick.
+     */
     inline void set_system_info(uint32_t* const pin_data,
                                 const uint32_t* current_system_tick,
                                 GpioTxPacketFifo* tx_packet_fifo,
@@ -29,6 +62,9 @@ public:
         _delta_sampling_ticks = NumAnalogPins/adc_chans_per_tick;
     }
 
+    /**
+     * @brief Initialize this analog controller to its default state.
+     */
     inline void init()
     {
         _id = 0;
@@ -48,16 +84,29 @@ public:
         reset_val();
     }
 
+    /**
+     * @brief Get the id of this analog controller
+     * @return The id of this analog controller
+     */
     inline int get_id()
     {
         return _id;
     }
 
+    /**
+     * @brief Check if this analog controller is active
+     * @return True if active, false if not
+     */
     inline bool is_active()
     {
         return _is_active;
     }
 
+    /**
+     * @brief Check if this analog controller has been initialized, i.e if it
+     *        has been assigned a pin number.
+     * @return True if ok, false if not.
+     */
     inline bool is_init()
     {
         if(!_pin_info_recvd)
@@ -69,6 +118,14 @@ public:
         return true;
     }
 
+    /**
+     * @brief Iterate through a list of used analog pins and check if this
+     *        analog controller's pin is duplicated. If not, then add it
+     *        to the used pin list.
+     * @param used_analog_pin_list A list of all used analog pins.
+     * @param total_num_used_pins The total number of analog pins used in the list.
+     * @return True if duplicated, false if not.
+     */
     inline bool check_duplicated_pins(std::array<uint32_t, NumAnalogPins>& used_analog_pin_list,
                                       int& total_num_used_pins)
     {
@@ -85,12 +142,19 @@ public:
         return false;
     }
 
+    /**
+     * @brief Reset the value of this analog controller to its default value.
+     */
     inline void reset_val()
     {
         _val = 0;
         _previous_val = 0;
     }
 
+    /**
+     * @brief Activate the controller.
+     * @param id The new id of the controller
+     */
     inline void set_ctrlr_info(int id)
     {
         init();
@@ -101,6 +165,12 @@ public:
         reset_val();
     }
 
+    /**
+     * @brief Set the tick rate of the analog controller. The tick rate is a
+     *        multiple of the system tick rate.
+     * @param tick_rate The new tick rate of the analog controller
+     * @return GPIO_OK
+     */
     inline GpioReturnStatus set_tick_rate(int tick_rate)
     {
         _delta_ticks = tick_rate;
@@ -109,6 +179,13 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the notification mode for this analog controller.
+     * @param notif_mode The new notification mode.
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER when notification mode is
+     *         GPIO_WHEN_TOGGLED_ON or GPIO_WHEN_TOGGLED_OFF.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus set_notif_mode(ControllerNotifMode notif_mode)
     {
         if(_notif_mode == GPIO_WHEN_TOGGLED_ON ||
@@ -125,6 +202,13 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Add pins to the analog controller
+     * @param num_pins The number of pins. It should be 1
+     * @param pin_list The pointer to the list of pin numbers.
+     * @return GPIO_PARAMETER_ERROR when more than 1 pin is to be added.
+     *         GPIO_Ok otherwise
+     */
     inline GpioReturnStatus add_pins(int num_pins,
                                      const uint8_t* const pin_list)
     {
@@ -146,6 +230,11 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Mute or unmute this analog controller
+     * @param mute_status The mute status.
+     * @return GPIO_OK always.
+     */
     inline GpioReturnStatus set_mute_status(ControllerMuteStatus mute_status)
     {
         if(mute_status == GPIO_CONTROLLER_MUTED)
@@ -159,6 +248,13 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the difference in bits between the resolution of this analog
+     *        controller and the ADC's resolution.
+     * @param adc_res_diff The difference in resolution of this analog
+     *        controller and the ADC's resolution.
+     * @return GPIO_OK always
+     */
     inline GpioReturnStatus set_res_diff(int adc_res_diff)
     {
         if(_res_diff == adc_res_diff)
@@ -178,6 +274,11 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the sampling rate of the adc. This is needed for the digital
+     *        filters.
+     * @param adc_sampling_freq The sampling frequency of the ADC.
+     */
     inline void set_adc_sampling_rate(int adc_sampling_freq)
     {
         _adc_sampling_freq = adc_sampling_freq;
@@ -190,6 +291,12 @@ public:
         }
     }
 
+    /**
+     * Sets the time constant for this controller's filter
+     * @param time_constant The time constant
+     * @return GPIO_PARAMETER_ERROR if time constant is below 0
+     *         GPIO OK otherwise.
+     */
     inline GpioReturnStatus set_time_constant(float time_constant)
     {
         if(time_constant <= 0.0)
@@ -212,11 +319,22 @@ public:
         return  GPIO_OK;
     }
 
+    /**
+     * @brief Get the value of this analog controller.
+     * @return The value of this analog controller.
+     */
     inline uint32_t get_val()
     {
         return _val;
     }
 
+    /**
+     * @brief Set the value of this analog controller. This can be used to set
+     *        up the initial condition of this controller, however, the value
+     *        will be overwritten once this controller has been processed.
+     * @param val The new value of this analog controller.
+     * @return GPIO_OK always
+     */
     inline GpioReturnStatus set_val(uint32_t val)
     {
         _val = val;
@@ -225,6 +343,9 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Process this analog controller.
+     */
     inline void process()
     {
         // Check if it is this ctrlrs pin which has been sampled in this tick
@@ -256,6 +377,10 @@ public:
     }
 
 private:
+    /**
+     * @brief Helper function to process the analog controller depending on its
+     *        notification mode.
+     */
     inline void _process_notif_mode()
     {
         if(_notif_mode == GPIO_ON_VALUE_CHANGE)
@@ -274,6 +399,9 @@ private:
         }
     }
 
+    /**
+     * @brief Process this analog controllers pin value through the filter.
+     */
     inline void _process_filter()
     {
         uint32_t pin_val = _pin_data[_pin_num];
@@ -317,6 +445,10 @@ private:
         }
     }
 
+    /**
+     * @brief Helper function to calculate the filter coefficients using the
+     *        filters time constant.
+     */
     inline void _calc_filter_coeffs()
     {
         float w0 = 1.0/(_time_constant * _adc_sampling_freq);
@@ -338,6 +470,9 @@ private:
         _settle_filter();
     }
 
+    /**
+     * @brief Helper function to settle or warmup the fitler.
+     */
     inline void _settle_filter()
     {
         for(int i = 0; i < NUM_FILTER_WARMUP_ITERATIONS; i++)

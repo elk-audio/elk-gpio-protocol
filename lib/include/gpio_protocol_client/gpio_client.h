@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk
+ * Gpio Protocol is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Gpio Protocol is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Gpio Protocol. If not, see http://www.gnu.org/licenses/ .
+ */
+
 /**
  * @brief Contains the definition and behavior logic of the gpio protocol client.
  * @copyright Modern Ancient Instruments Networked AB, Stockholm
@@ -56,9 +72,9 @@ constexpr int DEFAULT_SYSTEM_TICK_RATE = 1000; // 1KHz
  *                        NumAnalogPins is non zero.
  */
 template<uint32_t NumInputPins,
-        uint32_t NumOutputPins,
-        uint32_t NumAnalogPins,
-        uint32_t AdcRes>
+         uint32_t NumOutputPins,
+         uint32_t NumAnalogPins,
+         uint32_t AdcRes>
 class GpioClient
 {
 public:
@@ -235,11 +251,20 @@ public:
         }
     }
 
+    /**
+     * @brief Helper Function to clear a packet.
+     * @param packet The packet to be cleared
+     */
     inline void clear_packet(GpioPacket &packet)
     {
         _tx_packet_fifo.clear_packet(packet);
     }
 
+    /**
+     * @brief Main process function. It will iterate through all the configured
+     *        controllers and process the their logic. Every call to this
+     *        function is considered as one system tick.
+     */
     void process()
     {
         if (!_is_running)
@@ -254,27 +279,54 @@ public:
         _current_system_tick++;
     }
 
+    /**
+     * @brief Check if a new tx packet exists in the tx packet fifo
+     * @return True if a new tx packet exists, false if not.
+     */
     inline bool has_new_tx_packet()
     {
         return _tx_packet_fifo.has_new_elements();
     }
 
+    /**
+     * @brief Get a new tx packet from the tx packet fifo
+     * @return The new tx packet
+     */
     inline GpioPacket* get_next_tx_packet()
     {
         return _tx_packet_fifo.get_packet();
     }
 
+    /**
+     * @brief Check if a new log message exists.
+     * @return True if a new log message exists, false if not.
+     */
     inline bool has_new_log_msg()
     {
         return GPIO_LOG_HAS_NEW_MSG;
     }
 
+    /**
+     * @brief Get a log msg from the log message fifo.
+     * @return The log message
+     */
     inline GpioLogMsg* get_log_msg()
     {
         return GPIO_LOG_GET_MSG;
     }
 
 private:
+    /**
+     * @brief Start the gpio client. Should be called once configuration is
+     *        complete.
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_NO_CONTROLLERS_ADDED if no controllers have been configured
+     *         GPIO_UNITIALIZED_CONTROLLERS if atleast one controller is not
+     *         completely initialized.
+     *         GPIO_INVALID_SHARING_OF_PINS if one or more controllers share
+     *         the same pin and they are not muxed.
+     *         GPIO_OK upon success.
+     */
     inline GpioReturnStatus _start()
     {
         if (_is_running)
@@ -317,8 +369,14 @@ private:
         return GPIO_OK;
     }
 
-    inline GpioReturnStatus
-    _set_system_tick_rate(GpioSystemTickRate system_tick_rate)
+    /**
+     * @brief Set the system tick rate
+     * @param system_tick_rate The system tick rate
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_TICK_RATE if an invalid tick rate is specified
+     *         GPIO_OK on success
+     */
+    inline GpioReturnStatus _set_system_tick_rate(GpioSystemTickRate system_tick_rate)
     {
         if (_is_running)
         {
@@ -363,6 +421,9 @@ private:
         return GPIO_OK; // to supress warning
     }
 
+    /**
+     * @brief Reset all configured controller's value to its default.
+     */
     inline void _reset_all_ctrlrs()
     {
         _digital_inputs.reset_all_ctrlrs();
@@ -372,6 +433,14 @@ private:
         GPIO_LOG_INFO("All ctrlrs are reset to initial value");
     }
 
+    /**
+     * @brief Reset a controller's value to its default.
+     * @param id The id of the controller
+     * @return GPIO_OK if successful
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *
+     */
     inline GpioReturnStatus _reset_ctrlr(int id)
     {
         if (_digital_inputs.reset_ctrlr(id) ||
@@ -386,6 +455,16 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Add a new controller
+     * @param id The id of the new controller
+     * @param type The hwtype of the new controller
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_CONTROLLER_ID The controller Id already exists in
+     *         the list of configured controllers.
+     *         GPIO_INVALID_HW_TYPE Invalid hw type specified.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _add_ctrlr(int id, GpioHwType type)
     {
         if (_is_running)
@@ -431,6 +510,20 @@ private:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Attach a controller to a mux controller.
+     * @param ctrlr_id The id of the controller
+     * @param mux_id The id of the mux controller
+     * @param mux_pin The pin of the mux controller which is associated with
+     *        ctrlr_id
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_MUX_CONTROLLER mux_id does not exist in list of
+     *         configured mux controllers
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is an analog input.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _attach_ctrlr_to_mux(int ctrlr_id,
                                                  int mux_id,
                                                  uint32_t mux_pin)
@@ -478,6 +571,16 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Set the polarity of an digital input or a digital output controller.
+     * @param id The id of the controller
+     * @param pol The polarity of the controller
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is an analog input.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_ctrlr_pol(int id, ControllerPolarity pol)
     {
         if (_is_running)
@@ -510,6 +613,18 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Set the tick rate for a digital input controller or an analog
+     *        input controller.
+     * @param id The id of the digital input or analog input controller
+     * @param tick_rate The new tick rate of the controller
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         GPIO_INVALID_TICK_RATE if tick rate = 0
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is a digital output.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_ctrlr_tick_rate(int id, int tick_rate)
     {
         if (_is_running)
@@ -548,6 +663,17 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Set controller notification mode for a digital input controller or
+     *        an analog controller.
+     * @param id The id of the digital input of analog input controller
+     * @param notif_mode The notification mode
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is a digital output.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_ctrlr_notif_mode(int id,
                                                   ControllerNotifMode notif_mode)
     {
@@ -582,6 +708,16 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Add pins to a controller
+     * @param id The id of the controller
+     * @param num_pins The number of pins to be added
+     * @param pin_list Pointer to the array contianing pin numbers
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _add_pins_to_ctrlr(int id,
                                                int num_pins,
                                                const uint8_t* const pin_list)
@@ -615,7 +751,14 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
-    // mux cannot be muted
+    /**
+     * @brief Mute or Unmute a controller using ControllerMuteStatus.
+     * @param id The id of the controller to be muted.
+     * @param mute_status The ControllerMuteStatus.
+     * @return GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_ctrlr_mute_status(int id,
                                                    ControllerMuteStatus mute_status)
     {
@@ -641,6 +784,20 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Set the bit resolution of an analog input controller.
+     * @param id The id of the analog input controller
+     * @param res_in_bits The resolution of the analog input controller in number
+     *        of bits
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_RES_OUT_OF_RANGE if the res_in_bits is more than the
+     *         resolution of the board's ADC.
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is a digital output
+     *         or a digital input.
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_analog_input_res(int id, uint32_t res_in_bits)
     {
         if (_is_running)
@@ -675,6 +832,20 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Set an input digital controllers range.
+     * @param id The id of the digital input controller
+     * @param min_val The minimum value
+     * @param max_val The maximum value
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_PARAMETER_ERROR if min value is greater than or equal to
+     *         max value
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is a digital output
+     *         or a analog input.
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_ctrlr_range(int id,
                                              uint32_t min_val,
                                              uint32_t max_val)
@@ -709,6 +880,17 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Set the debounce mode(on or off) for digital input controllers
+     * @param id The controller id
+     * @param debounce_mode The debounce mode
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is a digital output
+     *         or a analog input.
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         Other GpioReturnStatus code otherwise.
+     */
     inline GpioReturnStatus _set_ctrlr_debounce_mode(int id,
                                                      ControllerDebounceMode debounce_mode)
     {
@@ -736,6 +918,18 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief helper to set the time constant for an analog controller's filter
+     * @param id The id of the analog controller
+     * @param time_constant The time constant of the filter.
+     * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
+     *         GPIO_INVALID_COMMAND_FOR_CONTROLLER if id is a digital output
+     *         or a digital input.
+     *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
+     *         , digital outputs or analog inputs.
+     *         Other GpioReturnStatus code otherwise.
+     *
+     */
     inline GpioReturnStatus _set_time_constant(int id, float time_constant)
     {
         if (_is_running)
@@ -762,6 +956,10 @@ private:
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
+    /**
+     * @brief Handles GPIO_CMD_SYSTEM_CONTROL packets.
+     * @param packet The packet having GPIO_CMD_SYSTEM_CONTROL command.
+     */
     inline void _handle_system_ctrl_cmd(const GpioPacket &packet)
     {
         switch (packet.sub_command)
@@ -810,6 +1008,10 @@ private:
         }
     }
 
+    /**
+     * @brief Handles GPIO_CMD_CONFIG_CONTROLLER packets.
+     * @param packet The packet having GPIO_CMD_CONFIG_CONTROLLER command
+     */
     inline void _handle_config_ctrlr_cmd(const GpioPacket &packet)
     {
         GpioReturnStatus status;
@@ -919,6 +1121,14 @@ private:
                                  packet.sequence_no);
     }
 
+    /**
+     *@brief Handles GPIO_CMD_GET_VALUE packets. If the controller id exists in
+     *       the list of configured controllers, then it sends an ACK packet
+     *       followed by a GPIO_CMD_GET_VALUE packet with the value of the
+     *       said controller. Else it sends an ack packet with an appropriate
+     *       error code.
+     * @param packet The packet having GPIO_CMD_GET_VALUE command
+     */
     inline void _handle_get_val_cmd(const GpioPacket &packet)
     {
         const auto &id = packet.payload.gpio_value_request.controller_id;
@@ -965,6 +1175,13 @@ private:
                                  packet.sequence_no);
     }
 
+    /**
+     * @brief Handles a set value gpio command. If the controller id specified
+     *        is in the list of configured controllers, then it sets it value
+     *        and sends a GPIO_OK packet. Else it sends an ack packet with an
+     *        appropriate error code.
+     * @param packet The packet containing the set value command
+     */
     inline void _handle_set_val_cmd(const GpioPacket &packet)
     {
         const auto &id = packet.payload.gpio_value_data.controller_id;

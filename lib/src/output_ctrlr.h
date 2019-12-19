@@ -1,3 +1,23 @@
+/*
+ * Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk
+ * Gpio Protocol is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Gpio Protocol is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Gpio Protocol. If not, see http://www.gnu.org/licenses/ .
+ */
+
+/**
+ * @brief File which contains the logic for handling digital output and
+ *        mux controllers.
+ */
 #ifndef OUTPUT_CTRLR_H_
 #define OUTPUT_CTRLR_H_
 
@@ -11,18 +31,36 @@
 
 namespace gpio {
 
+/**
+ * @brief Interface for other controllers to interact with a mux controller
+ *       type digital output.
+ */
 class MuxCtrlrInterface
 {
 public:
+    /**
+     * @brief Attach to a pin of a mux controller
+     * @param id The id of the attachee
+     * @param mux_pin The mux pin number
+     * @return True if success, false if not.
+     */
     virtual bool attach_ctrlr(int id, uint32_t mux_pin) = 0;
 
+    /**
+     * @brief Get the current active input controller id.
+     * @return The current active input controller id.
+     */
     virtual int get_mux_current_input_ctrlr_id() = 0;
 
+    /**
+     * @brief Get the current active output controller id.
+     * @return The current active output controller id.
+     */
     virtual int get_mux_current_output_ctrlr_id() = 0;
 };
 
 /**
- * @brief Structure to hold mux ctlrr related data.
+ * @brief Structure to hold mux ctlr related data.
  *        The mux controller can have a maximum of
  *        NumOutputPins associated to it, to activate or
  *        or deactivate a controller per pin
@@ -38,12 +76,23 @@ struct MuxCtrlrType
     std::array<int, NumOutputPins> attached_ctrlrs;
 };
 
+/**
+ * @brief Class which contains the logic for digital input controllers.
+ * @tparam NumOutputPins the number of digital output pins on the board
+ */
 template <int NumOutputPins>
 class OutputCtrlr : public MuxCtrlrInterface
 {
 public:
     static_assert(NumOutputPins != 0);
 
+    /**
+     * @brief Function to set internal system information. This function should
+     *        be called after instantiation.
+     * @param pin_data The pointer to the memory location containing the
+     *                 sampled data of the pins.
+     * @param current_system_tick Pointer to the system tick counter.
+     */
     inline void set_system_info(uint32_t* const pin_data,
                                 const uint32_t* current_system_tick)
     {
@@ -51,6 +100,9 @@ public:
         _current_system_tick = current_system_tick;
     }
 
+    /**
+     * @brief Initialize this controller to its default state.
+     */
     inline void init()
     {
         _id = 0;
@@ -65,21 +117,36 @@ public:
         _pin_off_val = 0;
     }
 
+    /**
+     * @brief Get the id of this controller
+     * @return The controllers id.
+     */
     inline int get_id()
     {
         return _id;
     }
 
+    /**
+     * @brief Check if controller is active.
+     * @return True if it is, false if not.
+     */
     inline bool is_active()
     {
         return _is_active;
     }
 
+    /**
+     * @brief Get number of pins used by this controller.
+     * @return The number of pins used.
+     */
     inline int get_num_pins_used()
     {
         return _num_pins_used;
     }
 
+    /**
+     * @brief Reset this controller's value to its default.
+     */
     inline void reset_val()
     {
         _val = 0;
@@ -96,6 +163,11 @@ public:
         }
     }
 
+    /**
+     * @brief Activate this controller.
+     * @param id the new id of this controller
+     * @param type The hw type of this controller.
+     */
     inline void set_ctrlr_info(int id, GpioHwType type)
     {
         init();
@@ -113,6 +185,11 @@ public:
         reset_val();
     }
 
+    /**
+     * @brief Set the polarity of this controller.
+     * @param pol The new polarity
+     * @return GPIO_OK always
+     */
     inline GpioReturnStatus set_pol(ControllerPolarity pol)
     {
         if(pol == GPIO_ACTIVE_LOW)
@@ -125,6 +202,13 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Set the mute status of this controller
+     * @param mute_status The mute status.
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if this controller is of type
+     *         mux output.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus set_mute_status(ControllerMuteStatus mute_status)
     {
         if(_hw_type == GPIO_MUX_OUTPUT)
@@ -150,6 +234,11 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Check if the controller is initialized fully and all necessary
+     *        config has been done.
+     * @return True if ok, false if not.
+     */
     inline bool is_init()
     {
         switch(_hw_type)
@@ -181,6 +270,15 @@ public:
         return true;
     }
 
+    /**
+     * @brief Attach this output controller to a mux_output type controller.
+     * @param mux_ctrlr_intf The Mux controller interface
+     * @param mux_pin The mux pin which is associated with this controller
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if this controller is also of
+     *         type mux. A mux cannot be attached to another mux!
+     *         GPIO_INVALID_MUX_CONTROLLER if the mux controller is invalid.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus attach_to_mux(MuxCtrlrInterface* const mux_ctrlr_intf, int mux_pin)
     {
         // A mux cannot be attached to another mux ctrlr
@@ -208,11 +306,18 @@ public:
         return GPIO_OK;
     }
 
-    /* Check if the mux exits
-    if so check if the pin specified exists in its configured list
-    if so check of the pin is already used by another controller */
+    /**
+     * @brief attach a controller to this digital output controller if this is
+     *        of type mux output. This should be done using the MuxCtrlrInterface.
+     * @param ctrlr_id The controller id
+     * @param mux_pin the mux pin
+     * @return True if success, false if not
+     */
     inline bool attach_ctrlr(int ctrlr_id, uint32_t mux_pin) override
     {
+        /* Check if the mux exits
+            if so check if the pin specified exists in its configured list
+            if so check of the pin is already used by another controller */
         if(_hw_type != GPIO_MUX_OUTPUT)
         {
             return false;
@@ -240,6 +345,13 @@ public:
         return false;
     }
 
+    /**
+     * @brief Add pins to this digital output controller
+     * @param num_pins The number of pins to add.
+     * @param pin_list Pointer to the list of pin numbers
+     * @return GPIO_NO_PINS_AVAILABLE if all pins have been used
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus add_pins(int num_pins,
                                      const uint8_t* const pin_list)
     {
@@ -262,6 +374,15 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Iterate through a list of used digital output pins and check if this
+     *        digital output controller's pin is duplicated. If not, then add it
+     *        to the used pin list.
+     * @param used_input_pin_list A list of all used digital output pins.
+     * @param total_num_used_pins The total number of digital output pins used in
+     *        the list.
+     * @return True if duplicated, false if not.
+    */
     inline bool check_duplicated_pins(std::array<uint32_t, NumOutputPins>& used_output_pin_list,
                                       int& total_num_used_pins)
     {
@@ -293,11 +414,23 @@ public:
         return false;
     }
 
+    /**
+     * @brief Get the value of this controller.
+     * @return The value of this controller.
+     */
     inline uint32_t get_val()
     {
         return _val;
     }
 
+    /**
+     * @brief Set the value of this controller
+     * @param val The new value to be set.
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if this controller is of type
+     *         GPIO_MUX_OUTPUT
+     *         GPIO_PARAMETER_ERROR if value exceeds the range of this controller.
+     *         GPIO_OK otherwise.
+     */
     inline GpioReturnStatus set_val(uint32_t val)
     {
         if(_hw_type == GPIO_MUX_OUTPUT)
@@ -325,6 +458,9 @@ public:
         return GPIO_OK;
     }
 
+    /**
+     * @brief Process this controller.
+     */
     inline void process()
     {
         switch(_hw_type)
@@ -347,6 +483,13 @@ public:
         }
     }
 
+    /**
+     * @brief Get the current active output controller id. This is to be used
+     *        through the MuxCtrlrInterface and when this digital output
+     *        controller is of type MUX_OUTPUT.
+     * @return -1 if this controller is not of type MUX_OUTPUT
+     *          The current active controller id of the mux otherwise.
+     */
     inline int get_mux_current_output_ctrlr_id() override
     {
         if(_hw_type != GPIO_MUX_OUTPUT)
@@ -365,6 +508,13 @@ public:
         return _mux_type.current_active_id;
     }
 
+    /**
+     * @brief Get the current active input controller id. This is to be used
+     *        through the MuxCtrlrInterface and when this digital output
+     *        controller is of type MUX_OUTPUT.
+     * @return -1 if this controller is not of type MUX_OUTPUT
+     *          The current active controller id of the mux otherwise.
+     */
     inline int get_mux_current_input_ctrlr_id()
     {
         if(_hw_type != GPIO_MUX_OUTPUT)
@@ -379,6 +529,10 @@ public:
     }
 
 private:
+    /**
+     * @brief Helper function to set the maximum value of a controller depending
+     *        on its hw type.
+     */
     inline void _set_max_val()
     {
         switch (_hw_type)
@@ -401,6 +555,9 @@ private:
         }
     }
 
+    /**
+     * @brief Process controllers of type binary outputs
+     */
     inline void _process_binary_output()
     {
         if(_is_muxed)
@@ -443,6 +600,9 @@ private:
         }
     }
 
+    /**
+     * @brief Process controllers of type stepped outputs
+     */
     inline void _process_stepped_output()
     {
         if(_is_muxed)
@@ -480,6 +640,9 @@ private:
         }
     }
 
+    /**
+     * @brief Process controllers of type mux outputs
+     */
     void _process_mux_output()
     {
         _mux_type.current_active_pin_index = _mux_type.next_active_pin_index;

@@ -1,3 +1,22 @@
+/*
+ * Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk
+ * Gpio Protocol is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Gpio Protocol is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Gpio Protocol. If not, see http://www.gnu.org/licenses/ .
+ */
+
+/**
+ * Contains the defintions for the internal fifos for the packets and log msgs
+ */
 #ifndef GPIO_FIFO_H_
 #define GPIO_FIFO_H_
 
@@ -75,20 +94,34 @@ namespace gpio {
  */
 constexpr int GPIO_PACKET_FIFO_SIZE = 64;
 
+/**
+ * @brief Class which handles the creation and queuing of tx gpio packets.
+ */
 class GpioTxPacketFifo
 {
 public:
+    /**
+     * @brief Reset the fifo.
+     */
     inline void reset()
     {
         _head = 0;
         _tail = 0;
     }
 
+    /**
+     * @brief Check if fifo has any new elements.
+     * @return True if there are new elements, false if not.
+     */
     inline bool has_new_elements()
     {
         return _has_new_elem;
     }
 
+    /**
+     * @brief Get the packet at the current tail of the fifo.
+     * @return pointer to a gpiopacket.
+     */
     inline GpioPacket* get_packet()
     {
         auto packet = &_fifo[_tail];
@@ -96,6 +129,14 @@ public:
         return packet;
     }
 
+    /**
+     * @brief Create an ack packet and insert it into the fifo.
+     * @param status The GpioReturnStatus code
+     * @param current_system_tick The system tick at which this packet is
+     *        created
+     * @param seq_num The sequence number of the acq packet to which this ack
+     *        packet is responding to.
+     */
     inline void send_ack(const GpioReturnStatus status,
                          uint32_t current_system_tick,
                          uint32_t seq_num)
@@ -111,6 +152,14 @@ public:
         _update_head();
     }
 
+    /**
+     * @brief Create a board information packet and insert it into a queue
+     * @param current_system_tick The systemtick at which this packet is created.
+     * @param num_inputs The number of digital input pins.
+     * @param num_outputs The number of digital output pins
+     * @param num_analog The number if analog input pins.
+     * @param adc_res_in_bits The resolution of the ADC
+     */
     inline void send_board_info(uint32_t current_system_tick,
                                 uint32_t num_inputs,
                                 uint32_t num_outputs,
@@ -134,6 +183,12 @@ public:
         _update_head();
     }
 
+    /**
+     * @brief Create a send value packet and insert it into the queue
+     * @param id The id of the controller whose value is to be sent.
+     * @param val The value of the controller
+     * @param current_system_tick The system tick when this packet is created.
+     */
     inline void send_val(int id, uint32_t val, uint32_t current_system_tick)
     {
         auto& packet = _fifo[_head];
@@ -148,12 +203,19 @@ public:
         _update_head();
     }
 
+    /**
+     * @brief Helper function to clear a gpio packet.
+     * @param packet The packet to be cleared.
+     */
     inline void clear_packet(GpioPacket& packet)
     {
         std::memset(static_cast<void*>(&packet), 0, GPIO_PACKET_SIZE);
     }
 
 private:
+    /**
+     * @brief Helper function to update the fifo head.
+     */
     inline void _update_head()
     {
         _head++;
@@ -164,6 +226,9 @@ private:
         }
     }
 
+    /**
+     * @brief Helper function to update the fifo tail.
+     */
     inline void _update_tail()
     {
         _tail++;
@@ -195,7 +260,9 @@ private:
  */
 #ifdef GPIO_WITH_LOGGING
 
-
+/**
+ * Class which helps in the creation and queing of log messages.
+ */
 class GpioLogFifo
 {
 public:
@@ -209,6 +276,9 @@ public:
         return &log_fifo;
     }
 
+    /**
+     * @brief Reset the logging queue.
+     */
     inline void reset()
     {
         _head = 0;
@@ -216,11 +286,20 @@ public:
         _has_new_elem = 0;
     }
 
+    /**
+     * @brief Check if the log fifo has any new log msgs
+     * @return True if there are new log msgs, false if not.
+     */
     inline bool has_new_elements()
     {
         return _has_new_elem;
     }
 
+    /**
+     * @brief function to log messages of log level info and store it into the
+     *        queue
+     * @param msg The message
+     */
     inline void log_info(__attribute__((unused)) const char* msg, ...)
     {
         GpioLogMsg& gpio_log_data = _fifo[_head];
@@ -230,6 +309,11 @@ public:
         _update_head();
     }
 
+    /**
+     * @brief function to log messages of log level warning and store it into the
+     *        queue
+     * @param msg The message
+     */
     inline void log_warn(__attribute__((unused)) const char* msg, ...)
     {
         GpioLogMsg& gpio_log_data = _fifo[_head];
@@ -239,6 +323,11 @@ public:
         _update_head();
     }
 
+    /**
+     * @brief function to log messages of log level error and store it into the
+     *        queue
+     * @param msg The message
+     */
     inline void log_error(__attribute__((unused)) const char* msg, ...)
     {
         GpioLogMsg& gpio_log_data = _fifo[_head];
@@ -248,6 +337,10 @@ public:
         _update_head();
     }
 
+    /**
+     * @brief Get the log message from the fifo tail
+     * @return The pointer to the gpio log message
+     */
     GpioLogMsg* get_log_msg()
     {
         auto msg = &_fifo[_tail];
@@ -256,6 +349,9 @@ public:
     }
 
 private:
+    /**
+     * @brief Helper function to update the head of the fifo
+     */
     inline void _update_head()
     {
         _head++;
@@ -267,6 +363,9 @@ private:
         _has_new_elem = true;
     }
 
+    /**
+     * @brief Helper function to update the tail of the fifo
+     */
     inline void _update_tail()
     {
         _tail++;

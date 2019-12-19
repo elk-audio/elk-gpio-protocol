@@ -15,9 +15,12 @@
  */
 
 /**
- * Contains the implementation of the AanalogCtrlr class which performs the
+ * @brief Contains the implementation of the AnalogCtrlr class which performs the
  * logic of analog controllers
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
+
 #ifndef ANALOG_CTRLR_H_
 #define ANALOG_CTRLR_H_
 
@@ -301,7 +304,8 @@ public:
     {
         if(time_constant <= 0.0)
         {
-            GPIO_LOG_ERROR("Cannot set time constant %.3f to analog %d : its below 0", time_constant, _id);
+            GPIO_LOG_ERROR("Cannot set time constant %.3f to analog %d : " \
+                           " its below 0", time_constant, _id);
             return GPIO_PARAMETER_ERROR;
         }
 
@@ -421,7 +425,7 @@ private:
      * @brief Function to compute the initial tick offset depending on the number of adc
      *        channels sampled per tick. The goal is to process the analog filter only when
      *        the pins have been sampled. This function sets the initial tick delay so that
-     *        when _next_sampling_tick == _current_sample_tick, it is guarenteed that its
+     *        when _next_sampling_tick == _current_sample_tick, it is guaranteed that its
      *        pin has been sampled.
      */
     inline void _calc_initial_next_sampling_tick()
@@ -471,7 +475,7 @@ private:
     }
 
     /**
-     * @brief Helper function to settle or warmup the fitler.
+     * @brief Helper function to settle or warm up the filter.
      */
     inline void _settle_filter()
     {

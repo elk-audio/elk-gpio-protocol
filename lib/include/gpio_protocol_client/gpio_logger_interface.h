@@ -15,7 +15,9 @@
  */
 
 /**
- * File which contains the interface for the logging mechanism
+ * @brief interface for the logging gpio messages
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
 #ifndef GPIO_LOGGER_INTERFACE_H_
 #define GPIO_LOGGER_INTERFACE_H_

@@ -15,8 +15,12 @@
  */
 
 /**
- * @brief Contains the defintion of the CtrlrSet container class.
+ * @brief Contains the definition of the CtrlrSet container class which is a
+ *        container of controllers.
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
+
 #ifndef CTRLR_SET_H_
 #define CTRLR_SET_H_
 
@@ -32,7 +36,7 @@
 namespace gpio {
 
 /**
- * @brief A Container to store a fized size of controller types, along with
+ * @brief A Container to store a fixed size of controller types, along with
  *        utility functions to modify the underlying stored elements.
  * @tparam CtrlrType The controller type
  * @tparam NumPins The number of pins available for this type of controller.
@@ -795,7 +799,7 @@ public:
     {}
 
     /**
-     * @brief Reset the value of a controller to its defualt.
+     * @brief Reset the value of a controller to its default.
      * @param id The controller id.
      * @return False as there are no controllers in this container when number
      *         of pins is 0
@@ -834,7 +838,7 @@ public:
     /**
      * @brief Get an instance of the controller of a given id
      * @param id The id of the controller
-     * @return Always returns nullprt as there are no controllers in this
+     * @return Always returns nullptr as there are no controllers in this
      *         container when number of pins is 0
      */
     constexpr CtrlrType* get_ctrlr(int id)

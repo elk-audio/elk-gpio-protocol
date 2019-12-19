@@ -15,8 +15,12 @@
  */
 
 /**
- * Contains the defintions for the internal fifos for the packets and log msgs
+ * @brief Contains the definitions for the internal fifos for the packets and
+ *        log msgs
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
+
 #ifndef GPIO_FIFO_H_
 #define GPIO_FIFO_H_
 
@@ -154,7 +158,7 @@ public:
 
     /**
      * @brief Create a board information packet and insert it into a queue
-     * @param current_system_tick The systemtick at which this packet is created.
+     * @param current_system_tick The system tick at which this packet is created.
      * @param num_inputs The number of digital input pins.
      * @param num_outputs The number of digital output pins
      * @param num_analog The number if analog input pins.

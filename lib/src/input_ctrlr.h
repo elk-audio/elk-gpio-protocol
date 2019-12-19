@@ -16,7 +16,10 @@
 
 /**
  * @brief File which contains the logic for handling digital input controllers.
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
+
 #ifndef INPUT_CTRLR_H_
 #define INPUT_CTLRL_H_
 
@@ -322,7 +325,7 @@ public:
     /**
      * @brief Set the notification mode of this digital input controller
      * @param notif_mode the new notification mode
-     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if hwype is either
+     * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if hw type is either
      *         GPIO_ROTARY_ENCODER or GPIO_N_WAY_SWITCH and notif mode is either
      *         GPIO_WHEN_TOGGLED_ON or GPIO_WHEN_TOGGLED_OFF
      *
@@ -358,7 +361,7 @@ public:
      * @param num_pins The number of pins to add.
      * @param pin_list Pointer to the list of pins to be added.
      * @return GPIO_INVALID_COMMAND_FOR_CONTROLLER if more than 2 pins are added
-     *         to a hwtype of rotary encoder.
+     *         to a hw type of rotary encoder.
      *         GPIO_NO_PINS_AVAILABLE when no more pins are available.
      *         GPIO_OK otherwise.
      */

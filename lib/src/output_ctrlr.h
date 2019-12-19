@@ -17,7 +17,9 @@
 /**
  * @brief File which contains the logic for handling digital output and
  *        mux controllers.
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
+
 #ifndef OUTPUT_CTRLR_H_
 #define OUTPUT_CTRLR_H_
 
@@ -60,7 +62,7 @@ public:
 };
 
 /**
- * @brief Structure to hold mux ctlr related data.
+ * @brief Structure to hold mux ctrlr related data.
  *        The mux controller can have a maximum of
  *        NumOutputPins associated to it, to activate or
  *        or deactivate a controller per pin
@@ -593,7 +595,7 @@ private:
         }
 
         /* no point of storing previous val for muxed ctrlrs as they
-        should be refreshsed every cycle */
+        should be refreshed every cycle */
         if(!_is_muxed)
         {
             _previous_val = _val;
@@ -633,7 +635,7 @@ private:
         }
 
         /* no point of storing previous val for muxed ctrlrs as they
-           should be refreshsed every cycle */
+           should be refreshed every cycle */
         if(!_is_muxed)
         {
             _previous_val = _val;

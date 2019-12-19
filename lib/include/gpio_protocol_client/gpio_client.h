@@ -16,12 +16,12 @@
 
 /**
  * @brief Contains the definition and behavior logic of the gpio protocol client.
- * @copyright Modern Ancient Instruments Networked AB, Stockholm
- *
  * Defines the gpio client library which contains the logic and behaviour to
  * control gpio controllers. This can run on multiple architectures which follow
  * the gpio protocol specification. It is meant to be used in any platform where
  * gpio protocol logic is needed and interacts.
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
 #ifndef GPIO_CLIENT_H_
 #define GPIO_CLIENT_H_
@@ -194,7 +194,7 @@ public:
     }
 
     /**
-     * @brief Get the current system tick period in nanosecs.
+     * @brief Get the current system tick period in nano seconds.
      * @return The tick period in nanoseconds.
      */
     inline int get_tick_period_ns()
@@ -321,7 +321,7 @@ private:
      *        complete.
      * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
      *         GPIO_NO_CONTROLLERS_ADDED if no controllers have been configured
-     *         GPIO_UNITIALIZED_CONTROLLERS if atleast one controller is not
+     *         GPIO_UNITIALIZED_CONTROLLERS if at least one controller is not
      *         completely initialized.
      *         GPIO_INVALID_SHARING_OF_PINS if one or more controllers share
      *         the same pin and they are not muxed.
@@ -418,7 +418,7 @@ private:
                                                   _adc_chans_per_tick);
 
         GPIO_LOG_INFO("System Tick rate set to %d Hz", _system_tick_rate);
-        return GPIO_OK; // to supress warning
+        return GPIO_OK; // to suppress warning
     }
 
     /**
@@ -458,7 +458,7 @@ private:
     /**
      * @brief Add a new controller
      * @param id The id of the new controller
-     * @param type The hwtype of the new controller
+     * @param type The hw type of the new controller
      * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
      *         GPIO_INVALID_CONTROLLER_ID The controller Id already exists in
      *         the list of configured controllers.
@@ -712,7 +712,7 @@ private:
      * @brief Add pins to a controller
      * @param id The id of the controller
      * @param num_pins The number of pins to be added
-     * @param pin_list Pointer to the array contianing pin numbers
+     * @param pin_list Pointer to the array containing pin numbers
      * @return GPIO_INVALID_RUNTIME_CONFIG if the client is already running
      *         GPIO_INVALID_CONTROLLER_ID if id does not exist in digital inputs
      *         , digital outputs or analog inputs.

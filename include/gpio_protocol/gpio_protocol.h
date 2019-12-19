@@ -15,8 +15,11 @@
  */
 
 /**
- * @brief Protocol definition for controlling GPIO sensors
+ * @brief Protocol for communicating with devices controlling GPIOs
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
  */
+
 #ifndef GPIO_PROTOCOL_H_
 #define GPIO_PROTOCOL_H_
 

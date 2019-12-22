@@ -54,11 +54,11 @@ namespace gpio {
     #define GPIO_WITH_LOGGING
     #define GPIO_LOG_RESET (GpioLogFifo::get_logger_instance())->reset();
     #define GPIO_LOG_HAS_NEW_MSG (GpioLogFifo::get_logger_instance())->has_new_elements();
-    #define GPIO_LOG_GET_MSG (GpioLogFifo::get_logger_instance())->get_log_msg();
+    #define GPIO_LOG_GET_MSG(msg) (GpioLogFifo::get_logger_instance())->get_log_msg(msg);
 #else
     #define GPIO_LOG_RESET
     #define GPIO_LOG_HAS_NEW_MSG false
-    #define GPIO_LOG_GET_MSG nullptr
+    #define GPIO_LOG_GET_MSG(msg) nullptr
 #endif
 
 #ifdef GPIO_LOG_LEVEL_INFO
@@ -90,16 +90,158 @@ namespace gpio {
     std::vsnprintf(dst, GPIO_LOG_MAX_MSG_SIZE, src, args); \
     va_end(args);\
 
-
 /**
- * @brief Specifies the size of the TX packet fifo. this assumes the worst case
- *        size required i.e that there are so many controllers sending packets out
- *        in a single system tick.
+ * @brief Macro which prevents allocation of GpioLogFifo if it is not defined.
+ *        This macro is defined if GPIO_LOG_LEVEL is any of INFO, WARNING and ERROR
  */
-constexpr int GPIO_PACKET_FIFO_SIZE = 64;
+#ifdef GPIO_WITH_LOGGING
 
 /**
- * @brief Class which handles the creation and queuing of tx gpio packets.
+ * Class which helps in the creation and queing of log messages.
+ */
+class GpioLogFifo
+{
+public:
+    /**
+     * @brief Get the pointer of the singleton logger instance
+     * @return BaseLogger* pointer to logger instance
+     */
+    inline static GpioLogFifo* get_logger_instance()
+    {
+        static GpioLogFifo log_fifo;
+        return &log_fifo;
+    }
+
+    /**
+     * @brief Reset the logging queue.
+     */
+    inline void reset()
+    {
+        _head = 0;
+        _tail = 0;
+        _has_new_elem = 0;
+    }
+
+    /**
+     * @brief function to log messages of log level info and store it into the
+     *        queue
+     * @param msg The message
+     */
+    inline void log_info(__attribute__((unused)) const char* msg, ...)
+    {
+        GpioLogMsg& gpio_log_data = _fifo[_head];
+        gpio_log_data.level = GpioLogLevel::GPIO_LOG_INFO;
+        char* dst = gpio_log_data.msg.data();
+        STORE_LOG_MSG(dst, msg);
+        _update_head();
+    }
+
+    /**
+     * @brief function to log messages of log level warning and store it into the
+     *        queue
+     * @param msg The message
+     */
+    inline void log_warn(__attribute__((unused)) const char* msg, ...)
+    {
+        GpioLogMsg& gpio_log_data = _fifo[_head];
+        gpio_log_data.level = GpioLogLevel::GPIO_LOG_WARNING;
+        char* dst = gpio_log_data.msg.data();
+        STORE_LOG_MSG(dst, msg);
+        _update_head();
+    }
+
+    /**
+     * @brief function to log messages of log level error and store it into the
+     *        queue
+     * @param msg The message
+     */
+    inline void log_error(__attribute__((unused)) const char* msg, ...)
+    {
+        GpioLogMsg& gpio_log_data = _fifo[_head];
+        gpio_log_data.level = GpioLogLevel::GPIO_LOG_ERROR;
+        char* dst = gpio_log_data.msg.data();
+        STORE_LOG_MSG(dst, msg);
+        _update_head();
+    }
+
+    /**
+     * @brief Get the log message from the fifo tail
+     * @param The pointer to store the address of the new log message, if
+     *        new messages exists, else a nullptr is stored.
+     * @return The pointer to the gpio log message
+     */
+    inline bool get_log_msg(GpioLogMsg** msg)
+    {
+        if(!_has_new_elem)
+        {
+            *msg = nullptr;
+            return false;
+        }
+
+        *msg = &_fifo[_tail];
+        _update_tail();
+        return true;
+    }
+
+private:
+    /**
+     * @brief Helper function to update the head of the fifo
+     */
+    inline void _update_head()
+    {
+        _head++;
+        if(_head == GPIO_LOG_FIFO_SIZE)
+        {
+            _head = 0;
+        }
+
+        _has_new_elem = true;
+    }
+
+    /**
+     * @brief Helper function to update the tail of the fifo
+     */
+    inline void _update_tail()
+    {
+        _tail++;
+        if(_tail == GPIO_LOG_FIFO_SIZE)
+        {
+            _tail = 0;
+        }
+
+        if(_tail != _head)
+        {
+            _has_new_elem = true;
+        }
+        else
+        {
+            _has_new_elem =  false;
+        }
+    }
+
+    int _head;
+    int _tail;
+    bool _has_new_elem;
+
+    std::array<GpioLogMsg, GPIO_LOG_FIFO_SIZE> _fifo;
+};
+
+#endif
+
+/**
+ * @brief Specifies the size of the TX packet fifo. This assumes beyond the worst case
+ *        size required as each controller generates atleast 2 packets per
+ *        system tick.
+ */
+constexpr int GPIO_PACKET_FIFO_SIZE = 160;
+
+/**
+ * @brief Class which handles the creation and queuing of tx gpio packets from
+ *        the gpio client which are generated every system tick. As the gpio
+ *        client can generate anywhere from 0 to NUM_CONTROLLERS amount of
+ *        packets, this fifo be emptied every system tick.
+ *        It is not meant to be a queue but as a simple buffer between the host
+ *        and the gpio client.
  */
 class GpioTxPacketFifo
 {
@@ -114,23 +256,23 @@ public:
     }
 
     /**
-     * @brief Check if fifo has any new elements.
-     * @return True if there are new elements, false if not.
+     * @brief Get the packet at the current tail of the fifo. If a packet exists
+     *        it will return true and store the address of the new packet in
+     *        packet. Else it will return false and store nullptr in packet.
+     * @param pointer to access the gpiopacket,
+     * @return True if packet exists, false if not
      */
-    inline bool has_new_elements()
+    inline bool get_packet(GpioPacket** packet)
     {
-        return _has_new_elem;
-    }
+        if(!_has_new_elem)
+        {
+            *packet = nullptr;
+            return false;
+        }
 
-    /**
-     * @brief Get the packet at the current tail of the fifo.
-     * @return pointer to a gpiopacket.
-     */
-    inline GpioPacket* get_packet()
-    {
-        auto packet = &_fifo[_tail];
+        *packet = &_fifo[_tail];
         _update_tail();
-        return packet;
+        return true;
     }
 
     /**
@@ -145,6 +287,15 @@ public:
                          uint32_t current_system_tick,
                          uint32_t seq_num)
     {
+        if(_check_overflow())
+        {
+            GPIO_LOG_ERROR("Fatal : Cannot generate ack packet. Gpio"
+                           " client tx packet fifo is full!");
+
+            GPIO_LOG_ERROR("Increase queue size or drain the buffer, Dropping"
+                           "packet");
+        }
+
         auto& packet = _fifo[_head];
         clear_packet(packet);
 
@@ -170,6 +321,15 @@ public:
                                 uint32_t num_analog,
                                 uint32_t adc_res_in_bits)
     {
+        if(_check_overflow())
+        {
+            GPIO_LOG_ERROR("Fatal : Cannot generate ack packet. Gpio"
+                           " client tx packet fifo is full!");
+
+            GPIO_LOG_ERROR("Increase queue size or drain the buffer, Dropping"
+                           "packet");
+        }
+
         auto& packet = _fifo[_head];
         clear_packet(packet);
 
@@ -195,6 +355,15 @@ public:
      */
     inline void send_val(int id, uint32_t val, uint32_t current_system_tick)
     {
+        if(_check_overflow())
+        {
+            GPIO_LOG_ERROR("Fatal : Cannot generate ack packet. Gpio"
+                           " client tx packet fifo is full!");
+
+            GPIO_LOG_ERROR("Increase queue size or drain the buffer, Dropping"
+                           "packet");
+        }
+
         auto& packet = _fifo[_head];
         clear_packet(packet);
 
@@ -251,151 +420,17 @@ private:
         }
     }
 
+    inline bool _check_overflow()
+    {
+        return (_has_new_elem && (_head == _tail));
+    }
+
     int _head;
     int _tail;
     bool _has_new_elem;
 
     GpioPacket _fifo[GPIO_PACKET_FIFO_SIZE];
 };
-
-/**
- * @brief Macro which prevents allocation of GpioLogFifo if it is not defined.
- *        This macro is defined if GPIO_LOG_LEVEL is any of INFO, WARNING and ERROR
- */
-#ifdef GPIO_WITH_LOGGING
-
-/**
- * Class which helps in the creation and queing of log messages.
- */
-class GpioLogFifo
-{
-public:
-    /**
-     * @brief Get the pointer of the singleton logger instance
-     * @return BaseLogger* pointer to logger instance
-     */
-    inline static GpioLogFifo* get_logger_instance()
-    {
-        static GpioLogFifo log_fifo;
-        return &log_fifo;
-    }
-
-    /**
-     * @brief Reset the logging queue.
-     */
-    inline void reset()
-    {
-        _head = 0;
-        _tail = 0;
-        _has_new_elem = 0;
-    }
-
-    /**
-     * @brief Check if the log fifo has any new log msgs
-     * @return True if there are new log msgs, false if not.
-     */
-    inline bool has_new_elements()
-    {
-        return _has_new_elem;
-    }
-
-    /**
-     * @brief function to log messages of log level info and store it into the
-     *        queue
-     * @param msg The message
-     */
-    inline void log_info(__attribute__((unused)) const char* msg, ...)
-    {
-        GpioLogMsg& gpio_log_data = _fifo[_head];
-        gpio_log_data.level = GpioLogLevel::GPIO_LOG_INFO;
-        char* dst = gpio_log_data.msg.data();
-        STORE_LOG_MSG(dst, msg);
-        _update_head();
-    }
-
-    /**
-     * @brief function to log messages of log level warning and store it into the
-     *        queue
-     * @param msg The message
-     */
-    inline void log_warn(__attribute__((unused)) const char* msg, ...)
-    {
-        GpioLogMsg& gpio_log_data = _fifo[_head];
-        gpio_log_data.level = GpioLogLevel::GPIO_LOG_WARNING;
-        char* dst = gpio_log_data.msg.data();
-        STORE_LOG_MSG(dst, msg);
-        _update_head();
-    }
-
-    /**
-     * @brief function to log messages of log level error and store it into the
-     *        queue
-     * @param msg The message
-     */
-    inline void log_error(__attribute__((unused)) const char* msg, ...)
-    {
-        GpioLogMsg& gpio_log_data = _fifo[_head];
-        gpio_log_data.level = GpioLogLevel::GPIO_LOG_ERROR;
-        char* dst = gpio_log_data.msg.data();
-        STORE_LOG_MSG(dst, msg);
-        _update_head();
-    }
-
-    /**
-     * @brief Get the log message from the fifo tail
-     * @return The pointer to the gpio log message
-     */
-    GpioLogMsg* get_log_msg()
-    {
-        auto msg = &_fifo[_tail];
-        _update_tail();
-        return msg;
-    }
-
-private:
-    /**
-     * @brief Helper function to update the head of the fifo
-     */
-    inline void _update_head()
-    {
-        _head++;
-        if(_head == GPIO_LOG_FIFO_SIZE)
-        {
-            _head = 0;
-        }
-
-        _has_new_elem = true;
-    }
-
-    /**
-     * @brief Helper function to update the tail of the fifo
-     */
-    inline void _update_tail()
-    {
-        _tail++;
-        if(_tail == GPIO_LOG_FIFO_SIZE)
-        {
-            _tail = 0;
-        }
-
-        if(_tail != _head)
-        {
-            _has_new_elem = true;
-        }
-        else
-        {
-            _has_new_elem =  false;
-        }
-    }
-
-    int _head;
-    int _tail;
-    bool _has_new_elem;
-
-    std::array<GpioLogMsg, GPIO_LOG_FIFO_SIZE> _fifo;
-};
-
-#endif
 
 } // gpio
 

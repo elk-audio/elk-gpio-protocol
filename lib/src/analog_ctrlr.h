@@ -289,7 +289,7 @@ public:
         _time_constant = time_constant;
 
         GPIO_LOG_INFO("Analog id %d time constant set to %.3f at " \
-                      "sample rate %d Hz", _id, _time_constant, _adc_sampling_freq);
+                      "sample rate %d Hz", _id, _time_constant);
         return  GPIO_OK;
     }
 

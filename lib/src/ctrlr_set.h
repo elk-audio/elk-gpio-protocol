@@ -192,6 +192,7 @@ public:
         }
 
         _ctrlrs[ctrlr_num].reset_ctrlr_val();
+        return true;
     }
 
     /**

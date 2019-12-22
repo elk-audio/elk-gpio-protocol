@@ -53,7 +53,6 @@ namespace gpio {
 #if defined(GPIO_LOG_LEVEL_INFO) || defined(GPIO_LOG_LEVEL_WARNING) || defined(GPIO_LOG_LEVEL_ERROR)
     #define GPIO_WITH_LOGGING
     #define GPIO_LOG_RESET (GpioLogFifo::get_logger_instance())->reset();
-    #define GPIO_LOG_HAS_NEW_MSG (GpioLogFifo::get_logger_instance())->has_new_elements();
     #define GPIO_LOG_GET_MSG(msg) (GpioLogFifo::get_logger_instance())->get_log_msg(msg);
 #else
     #define GPIO_LOG_RESET
@@ -102,6 +101,13 @@ namespace gpio {
 class GpioLogFifo
 {
 public:
+    GpioLogFifo()
+    {
+        reset();
+    }
+
+    ~GpioLogFifo() = default;
+
     /**
      * @brief Get the pointer of the singleton logger instance
      * @return BaseLogger* pointer to logger instance
@@ -246,6 +252,13 @@ constexpr int GPIO_PACKET_FIFO_SIZE = 160;
 class GpioTxPacketFifo
 {
 public:
+    GpioTxPacketFifo()
+    {
+        reset();
+    }
+
+    ~GpioTxPacketFifo() = default;
+
     /**
      * @brief Reset the fifo.
      */

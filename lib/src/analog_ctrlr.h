@@ -28,11 +28,11 @@
 
 #include "gpio_protocol/gpio_protocol.h"
 #include "gpio_fifo.h"
+#include "gpio_system_interface.h"
 
 namespace gpio {
 
 constexpr float DEFAULT_ANALOG_FILTER_TIME_CONSTANT = 0.020; //20 ms
-constexpr int DEFUALT_ADC_SAMPLING_FREQ = 250;
 constexpr int NUM_FILTER_WARMUP_ITERATIONS = 300;
 
 /**
@@ -43,32 +43,33 @@ template <int NumAnalogPins>
 class AnalogCtrlr
 {
 public:
-    static_assert(NumAnalogPins != 0);
+    AnalogCtrlr() : _tx_packet_fifo(nullptr),
+                    _gpio_sys_interface(nullptr)
+
+    {
+        static_assert(NumAnalogPins != 0);
+        reset_to_initial_state();
+    }
+
+    ~AnalogCtrlr() = default;
 
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation.
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the analog pins.
-     * @param current_system_tick Pointer to the system tick counter.
-     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
-     * @param adc_chans_per_tick Number of adc channels sampled per system tick.
+     * @brief Initialize this analog controller.
+     * @param gpio_sys_interface The pointer to an instance of the
+     *        GpioSysInterface class needed for run time info of the gpio system
+     * @param tx_packet_fifo Pointer to an instance of the tx packet fifo.
      */
-    inline void set_system_info(uint32_t* const pin_data,
-                                const uint32_t* current_system_tick,
-                                GpioTxPacketFifo* tx_packet_fifo,
-                                int adc_chans_per_tick)
+    void init(GpioSysInterface* gpio_sys_interface,
+              GpioTxPacketFifo* tx_packet_fifo)
     {
-        _pin_data = pin_data;
-        _current_system_tick = current_system_tick;
+        _gpio_sys_interface = gpio_sys_interface;
         _tx_packet_fifo = tx_packet_fifo;
-        _delta_sampling_ticks = NumAnalogPins/adc_chans_per_tick;
     }
 
     /**
-     * @brief Initialize this analog controller to its default state.
+     * @brief Initialize this analog controller to its initial state.
      */
-    inline void init()
+    inline void reset_to_initial_state()
     {
         _id = 0;
         _is_active = false;
@@ -79,12 +80,9 @@ public:
         _delta_ticks = 1;
         _res_diff = 0;
         _current_ctrlr_tick = 0;
-        _current_sampling_tick = 0;
-        _next_sampling_tick = 1;
         _time_constant = DEFAULT_ANALOG_FILTER_TIME_CONSTANT;
-        _adc_sampling_freq = DEFUALT_ADC_SAMPLING_FREQ;
 
-        reset_val();
+        reset_ctrlr_val();
     }
 
     /**
@@ -148,7 +146,7 @@ public:
     /**
      * @brief Reset the value of this analog controller to its default value.
      */
-    inline void reset_val()
+    inline void reset_ctrlr_val()
     {
         _val = 0;
         _previous_val = 0;
@@ -158,14 +156,12 @@ public:
      * @brief Activate the controller.
      * @param id The new id of the controller
      */
-    inline void set_ctrlr_info(int id)
+    inline void activate(int id)
     {
-        init();
+        reset_to_initial_state();
 
         _id = id;
         _is_active = true;
-
-        reset_val();
     }
 
     /**
@@ -224,11 +220,6 @@ public:
         _pin_num = pin_list[0];
         _pin_info_recvd = true;
 
-        // settle filter for current input value
-        _settle_filter();
-
-        _calc_initial_next_sampling_tick();
-
         GPIO_LOG_INFO("Added pin %d to analog id %d", pin_list[0], _id);
         return GPIO_OK;
     }
@@ -267,31 +258,17 @@ public:
 
         _res_diff = adc_res_diff;
 
-        // Settle filter
-        if(_pin_info_recvd)
-        {
-            _settle_filter();
-        }
-
         GPIO_LOG_INFO("Analog id %d res lowered by %d bits", _id, adc_res_diff);
         return GPIO_OK;
     }
 
     /**
-     * @brief Set the sampling rate of the adc. This is needed for the digital
-     *        filters.
-     * @param adc_sampling_freq The sampling frequency of the ADC.
+     * @brief Warms up the filters with the current value on the pin
      */
-    inline void set_adc_sampling_rate(int adc_sampling_freq)
+    inline void warmup_filter()
     {
-        _adc_sampling_freq = adc_sampling_freq;
         _calc_filter_coeffs();
-
-        // Settle filter
-        if(_pin_info_recvd)
-        {
-            _settle_filter();
-        }
+        _settle_filter();
     }
 
     /**
@@ -310,13 +287,6 @@ public:
         }
 
         _time_constant = time_constant;
-        _calc_filter_coeffs();
-
-        // Settle filter
-        if(_pin_info_recvd)
-        {
-            _settle_filter();
-        }
 
         GPIO_LOG_INFO("Analog id %d time constant set to %.3f at " \
                       "sample rate %d Hz", _id, _time_constant, _adc_sampling_freq);
@@ -352,14 +322,11 @@ public:
      */
     inline void process()
     {
-        // Check if it is this ctrlrs pin which has been sampled in this tick
-        _current_sampling_tick++;
-        if(_current_sampling_tick != _next_sampling_tick)
+        // Check if it is this ctrlr's pin which has been sampled in this tick
+        if(!_gpio_sys_interface->is_adc_pin_sampled_this_tick(_pin_num))
         {
             return;
         }
-        _current_sampling_tick = 0;
-        _next_sampling_tick = _delta_sampling_ticks;
 
         // process the sample through the filter
         _process_filter();
@@ -392,14 +359,16 @@ private:
             if(_val != _previous_val)
             {
                 _previous_val = _val;
-                _tx_packet_fifo->send_val(_id, _val, *_current_system_tick);
+                _tx_packet_fifo->send_val(_id, _val,
+                          _gpio_sys_interface->get_current_system_tick());
             }
         }
         else
         {
             // On every ctrlr tick
             _previous_val = _val;
-            _tx_packet_fifo->send_val(_id, _val, *_current_system_tick);
+            _tx_packet_fifo->send_val(_id, _val,
+                    _gpio_sys_interface->get_current_system_tick());
         }
     }
 
@@ -408,7 +377,7 @@ private:
      */
     inline void _process_filter()
     {
-        uint32_t pin_val = _pin_data[_pin_num];
+        auto pin_val = _gpio_sys_interface->get_analog_input_pin_val(_pin_num);
         pin_val = pin_val >> _res_diff;
 
         float val = (_filter_coeffs_b0 * pin_val) + _filter_state_s1;
@@ -422,42 +391,14 @@ private:
     }
 
     /**
-     * @brief Function to compute the initial tick offset depending on the number of adc
-     *        channels sampled per tick. The goal is to process the analog filter only when
-     *        the pins have been sampled. This function sets the initial tick delay so that
-     *        when _next_sampling_tick == _current_sample_tick, it is guaranteed that its
-     *        pin has been sampled.
-     */
-    inline void _calc_initial_next_sampling_tick()
-    {
-        int _adc_chans_per_tick = _delta_sampling_ticks * NumAnalogPins;
-        uint32_t chan_end = _adc_chans_per_tick;
-        _next_sampling_tick = 1;
-
-        for(int i = 0; i < NumAnalogPins; i++)
-        {
-            if(i != 0 && i == chan_end)
-            {
-                _next_sampling_tick++;
-                chan_end = chan_end + _adc_chans_per_tick;
-            }
-
-            if(i == _pin_num)
-            {
-                return;
-            }
-        }
-    }
-
-    /**
      * @brief Helper function to calculate the filter coefficients using the
      *        filters time constant.
      */
     inline void _calc_filter_coeffs()
     {
-        float w0 = 1.0/(_time_constant * _adc_sampling_freq);
+        float w0 = 1.0/(_time_constant * _gpio_sys_interface->get_adc_tick_rate());
         float alpha = std::sin(w0);
-        float beta = std::cos(w0); // poor naming??
+        float beta = std::cos(w0);
         float filter_coeffs_a0 = 1.0 + alpha;
 
         _filter_coeffs_b0 = (0.5 * (1. - beta)) / filter_coeffs_a0;
@@ -469,9 +410,6 @@ private:
         // reset state of filter
         _filter_state_s1 = 0.0;
         _filter_state_s2 = 0.0;
-
-        // Settle filter
-        _settle_filter();
     }
 
     /**
@@ -479,17 +417,19 @@ private:
      */
     inline void _settle_filter()
     {
+        if(!_pin_info_recvd)
+        {
+            return;
+        }
+
         for(int i = 0; i < NUM_FILTER_WARMUP_ITERATIONS; i++)
         {
             _process_filter();
         }
     }
 
-    uint32_t* _pin_data;
-    const uint32_t* _current_system_tick;
-    int _delta_sampling_ticks;
-    int _adc_sampling_freq;
     GpioTxPacketFifo* _tx_packet_fifo;
+    GpioSysInterface* _gpio_sys_interface;
 
     int _id;
     bool _is_active;
@@ -502,12 +442,9 @@ private:
 
     uint32_t _val;
     uint32_t _previous_val;
-    uint32_t _current_sampling_tick;
-    uint32_t _next_sampling_tick;
     uint32_t _current_ctrlr_tick;
 
     // Filter vars
-    int _adc_tick_rate;
     float _time_constant;
     float _filter_coeffs_b0;
     float _filter_coeffs_b1;

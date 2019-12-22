@@ -27,6 +27,7 @@
 
 #include "gpio_protocol/gpio_protocol.h"
 #include "gpio_fifo.h"
+#include "gpio_system_interface.h"
 
 namespace gpio {
 
@@ -47,29 +48,31 @@ template <int NumInputPins>
 class InputCtrlr
 {
 public:
-    static_assert(NumInputPins != 0);
+    InputCtrlr()
+    {
+        static_assert(NumInputPins != 0);
+        reset_to_initial_state();
+    }
+
+    ~InputCtrlr() = default;
 
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation.
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the digital input pins.
-     * @param current_system_tick Pointer to the system tick counter.
-     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
+     * @brief Initialize this digital input controller.
+     * @param gpio_sys_interface The pointer to an instance of the
+     *        GpioSysInterface class needed for run time info of the gpio system
+     * @param tx_packet_fifo Pointer to an instance of the tx packet fifo.
      */
-    inline void set_system_info(uint32_t* const pin_data,
-                                const uint32_t* current_system_tick,
-                                GpioTxPacketFifo* tx_packet_fifo)
+    inline void init(GpioSysInterface* gpio_sys_interface,
+                     GpioTxPacketFifo* tx_packet_fifo)
     {
-        _pin_data = pin_data;
-        _current_system_tick = current_system_tick;
+        _gpio_sys_interface = gpio_sys_interface;
         _tx_packet_fifo = tx_packet_fifo;
     }
 
     /**
-     * @brief Initialize this digital input controller to its default state.
+     * @brief Reset this digital input controller to its initial state.
      */
-    inline void init()
+    inline void reset_to_initial_state()
     {
         _id = 0;
         _is_active = false;
@@ -202,23 +205,24 @@ public:
      * @param id The new id of this controller
      * @param type The hw type of this digital input controller
      */
-    inline void set_ctrlr_info(int id, GpioHwType type)
+    inline void activate(int id, GpioHwType type)
     {
-        init();
+        reset_to_initial_state();
 
         _id = id;
         _hw_type = type;
         _is_active = true;
 
-        reset_val();
+        reset_ctrlr_val();
     }
 
     /**
      * @brief Reset the value of this digital input controller to its default.
      */
-    inline void reset_val()
+    inline void reset_ctrlr_val()
     {
-        _next_ctrlr_tick = *_current_system_tick + _tick_rate;
+        _next_ctrlr_tick = _gpio_sys_interface->get_current_system_tick() +
+                           _tick_rate;
 
         switch (_hw_type)
         {
@@ -316,7 +320,8 @@ public:
         }
 
         _tick_rate = tick_rate;
-        _next_ctrlr_tick = *_current_system_tick + _tick_rate;
+        _next_ctrlr_tick = _gpio_sys_interface->get_current_system_tick() +
+                           _tick_rate;
 
         GPIO_LOG_INFO("Input id %d tick rate set to %d", _id, _tick_rate);
         return GPIO_OK;
@@ -515,12 +520,13 @@ public:
      */
     inline void process()
     {
-        if(*_current_system_tick != _next_ctrlr_tick)
+        if(_gpio_sys_interface->get_current_system_tick() != _next_ctrlr_tick)
         {
             return;
         }
 
-        _next_ctrlr_tick = *_current_system_tick + _tick_rate;
+        _next_ctrlr_tick = _gpio_sys_interface->get_current_system_tick() +
+                           _tick_rate;
 
         if(_is_muted)
         {
@@ -577,7 +583,8 @@ private:
             if(_val != _previous_val)
             {
                 _previous_val = _val;
-                _tx_packet_fifo->send_val(_id, _val, *_current_system_tick);
+                _tx_packet_fifo->send_val(_id,
+                        _val, _gpio_sys_interface->get_current_system_tick());
                 GPIO_LOG_INFO("Id %d val = %d", _id, _val);
                 return;
             }
@@ -585,16 +592,17 @@ private:
 
         case GPIO_EVERY_CONTROLLER_TICK:
             _previous_val = _val;
-            _tx_packet_fifo->send_val(_id, _val, *_current_system_tick);
+            _tx_packet_fifo->send_val(_id,
+                    _val, _gpio_sys_interface->get_current_system_tick());
             return;
-            break;
 
         case GPIO_WHEN_TOGGLED_ON:
             if(_previous_val == _pin_off_val &&
                _val == _pin_on_val)
             {
                 _previous_val = _val;
-                _tx_packet_fifo->send_val(_id, _val, *_current_system_tick);
+                _tx_packet_fifo->send_val(_id,
+                        _val, _gpio_sys_interface->get_current_system_tick());
                 return;
             }
             break;
@@ -604,7 +612,8 @@ private:
                _val == _pin_off_val)
             {
                 _previous_val = _val;
-                _tx_packet_fifo->send_val(_id, _val, *_current_system_tick);
+                _tx_packet_fifo->send_val(_id,
+                        _val, _gpio_sys_interface->get_current_system_tick());
                 return;
             }
             break;
@@ -625,32 +634,33 @@ private:
      */
     inline void _process_binary_input()
     {
-        for(int pin_index = 0; pin_index < _num_pins_used; pin_index++)
+        for(int i = 0; i < _num_pins_used; i++)
         {
-            uint32_t pin_num = _pin_nums[pin_index];
-            uint32_t pin_val = _pin_data[pin_num];
+            const auto pin_val =
+                    _gpio_sys_interface->get_digital_input_pin_val(_pin_nums[i]);
 
             if(_is_debounced)
             {
-                _debounce_buffer[pin_index] = (uint32_t)(_debounce_buffer[pin_index] << 1) | pin_val;
-                if(_debounce_buffer[pin_index] == _debounce_buffer_on_val)
+                _debounce_buffer[i] =
+                        (uint32_t)(_debounce_buffer[i] << 1) | pin_val;
+                if(_debounce_buffer[i] == _debounce_buffer_on_val)
                 {
-                    _write_bit_in_val(pin_index, 1);
+                    _write_bit_in_val(i, 1);
                 }
-                else if(_debounce_buffer[pin_index] == _debounce_buffer_off_val)
+                else if(_debounce_buffer[i] == _debounce_buffer_off_val)
                 {
-                    _write_bit_in_val(pin_index, 0);
+                    _write_bit_in_val(i, 0);
                 }
             }
             else
             {
                 if(pin_val == _pin_on_val)
                 {
-                    _write_bit_in_val(pin_index, 1);
+                    _write_bit_in_val(i, 1);
                 }
                 else
                 {
-                    _write_bit_in_val(pin_index, 0);
+                    _write_bit_in_val(i, 0);
                 }
             }
         }
@@ -663,22 +673,25 @@ private:
      */
     inline void _process_n_way_switch()
     {
-        for(int pin_index = 0; pin_index < _num_pins_used; pin_index++)
+        for(int i = 0; i < _num_pins_used; i++)
         {
-            uint32_t pin_num = _pin_nums[pin_index];
-            uint32_t pin_val = _pin_data[pin_num];
+            const auto pin_val = _gpio_sys_interface->
+                            get_digital_input_pin_val( _pin_nums[i]);
 
             if(_is_debounced)
             {
-                _debounce_buffer[pin_index] = (_debounce_buffer[pin_index] < 1) | pin_val;
-                if(_debounce_buffer[pin_index] == _debounce_buffer_on_val)
-                _val = pin_index + 1;
+                _debounce_buffer[i] = (_debounce_buffer[i] < 1) | pin_val;
+                if(_debounce_buffer[i] == _debounce_buffer_on_val)
+                {
+                    _val = i + 1;
+                }
+
                 break;
             }
 
             if(pin_val == _pin_on_val)
             {
-                _val = pin_index + 1;
+                _val = i + 1;
                 break;
             }
         }
@@ -691,8 +704,10 @@ private:
      */
     inline void _process_rotary_encoder()
     {
-        uint32_t pin_val_A =  _pin_data[_pin_nums[0]];
-        uint32_t pin_val_B =  _pin_data[_pin_nums[1]];
+        const auto pin_val_A =
+                 _gpio_sys_interface->get_digital_input_pin_val(_pin_nums[0]);
+        const auto pin_val_B =
+                _gpio_sys_interface->get_digital_input_pin_val(_pin_nums[1]);
 
         uint32_t& prev_transition_reading = _debounce_buffer[0];
         uint32_t& transition_snapshot = _debounce_buffer[1];
@@ -731,8 +746,7 @@ private:
         _process_notif_mode();
     }
 
-    uint32_t*_pin_data;
-    const uint32_t* _current_system_tick;
+    GpioSysInterface* _gpio_sys_interface;
     GpioTxPacketFifo* _tx_packet_fifo;
 
     int _id;

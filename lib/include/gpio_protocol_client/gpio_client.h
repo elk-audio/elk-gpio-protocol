@@ -29,18 +29,14 @@
 #include <cstdint>
 #include <tuple>
 #include <array>
-#include <chrono>
 
 #include "gpio_protocol/gpio_protocol.h"
 #include "ctrlr_set.h"
 #include "gpio_logger_interface.h"
 #include "gpio_fifo.h"
+#include "gpio_system_interface.h"
 
 namespace gpio {
-
-// Default system task period and system tick rate
-constexpr int DEFAULT_TASK_PERIOD_NS = 1000000; // 1KHz
-constexpr int DEFAULT_SYSTEM_TICK_RATE = 1000; // 1KHz
 
 /**
  * @brief Cross platform and architecture gpio protocol client which handles all
@@ -78,6 +74,13 @@ template<uint32_t NumInputPins,
 class GpioClient
 {
 public:
+    GpioClient() : _gpio_sys_interface(NumInputPins, NumOutputPins, NumAnalogPins),
+                   _digital_inputs(&_gpio_sys_interface, &_tx_packet_fifo),
+                   _digital_outputs(&_gpio_sys_interface),
+                   _analog_inputs(&_gpio_sys_interface, &_tx_packet_fifo)
+    {
+        reset_to_initial_state();
+    }
 
     /**
      * @brief Initializes all the internal data and ctrlrs and checks the
@@ -123,7 +126,12 @@ public:
 
         if (NumAnalogPins > 0)
         {
-            static_assert(AdcRes != 0);
+            if(AdcRes == 0)
+            {
+                GPIO_LOG_ERROR(
+                        "Cannot init gpio client, invalid ADC res %d", AdcRes);
+                return false;
+            }
 
             if (analog_pin_data == nullptr)
             {
@@ -140,17 +148,10 @@ public:
             }
         }
 
-        _output_pin_data = output_pin_data;
-        _digital_outputs.set_info(output_pin_data, &_current_system_tick);
-
-        _input_pin_data = input_pin_data;
-        _digital_inputs.set_info(input_pin_data, &_current_system_tick,
-                                 &_tx_packet_fifo);
-
-        _analog_pin_data = analog_pin_data;
-        _adc_chans_per_tick = adc_chans_per_tick;
-        _analog_inputs.set_info(analog_pin_data, &_current_system_tick,
-                                &_tx_packet_fifo, adc_chans_per_tick);
+        _gpio_sys_interface.init(input_pin_data,
+                                 output_pin_data,
+                                 analog_pin_data,
+                                 adc_chans_per_tick);
 
         return true;
     }
@@ -160,35 +161,15 @@ public:
      *        the pin data, remove any previously configured controllers and
      *        reset the log msg fifo and the packet fifos.
      */
-    inline void reset()
+    inline void reset_to_initial_state()
     {
-        _current_system_tick = 0;
         _is_running = false;
 
-        _system_tick_rate = DEFAULT_SYSTEM_TICK_RATE;
-        _system_tick_period_ns = DEFAULT_TASK_PERIOD_NS;
+        _digital_inputs.reset_to_initial_state();
+        _digital_outputs.reset_to_initial_state();
+        _analog_inputs.reset_to_initial_state();
 
-        for (int i = 0; i < NumInputPins; i++)
-        {
-            _input_pin_data[i] = 0;
-        }
-
-        for (int i = 0; i < NumOutputPins; i++)
-        {
-            _output_pin_data[i] = 0;
-        }
-
-        for (int i = 0; i < NumAnalogPins; i++)
-        {
-            _analog_pin_data[i] = 0;
-        }
-
-        _digital_inputs.init();
-        _digital_outputs.init();
-        _analog_inputs.init();
-        _analog_inputs.calc_and_set_adc_tick_rate(_system_tick_rate,
-                                                  _adc_chans_per_tick);
-
+        _gpio_sys_interface.reset();
         _tx_packet_fifo.reset();
         GPIO_LOG_RESET;
     }
@@ -199,7 +180,7 @@ public:
      */
     inline int get_tick_period_ns()
     {
-        return _system_tick_period_ns;
+        return _gpio_sys_interface.get_system_tick_period_ns();
     }
 
     /**
@@ -245,7 +226,8 @@ public:
 
         default:
             GPIO_LOG_ERROR("Unknown cmd; seq = %d", rx_packet.sequence_no);
-            _tx_packet_fifo.send_ack(GPIO_INVALID_CMD, _current_system_tick,
+            _tx_packet_fifo.send_ack(GPIO_INVALID_CMD,
+                     _gpio_sys_interface.get_current_system_tick(),
                                      rx_packet.sequence_no);
             break;
         }
@@ -276,7 +258,7 @@ public:
         _digital_outputs.process();
         _analog_inputs.process();
 
-        _current_system_tick++;
+        _gpio_sys_interface.update_current_system_tick();
     }
 
     /**
@@ -362,8 +344,9 @@ private:
             return GPIO_INVALID_SHARING_OF_PINS;
         }
 
+        _analog_inputs.warmup_filter();
+
         _is_running = true;
-        _current_system_tick = 0;
 
         GPIO_LOG_INFO("Client is started");
         return GPIO_OK;
@@ -388,23 +371,19 @@ private:
         switch (system_tick_rate)
         {
         case GPIO_SYSTEM_TICK_100_HZ:
-            _system_tick_rate = 100; // 10 ms
-            _system_tick_period_ns = 10000000;
+            _gpio_sys_interface.set_system_tick_rate(100);
             break;
 
         case GPIO_SYSTEM_TICK_500_HZ:
-            _system_tick_rate = 500; // 2 ms
-            _system_tick_period_ns = 2000000;
+            _gpio_sys_interface.set_system_tick_rate(500);
             break;
 
         case GPIO_SYSTEM_TICK_1000_HZ:
-            _system_tick_rate = 1000; // 1 ms
-            _system_tick_period_ns = 1000000;
+            _gpio_sys_interface.set_system_tick_rate(1000);
             break;
 
         case GPIO_SYSTEM_TICK_5000_HZ:
-            _system_tick_rate = 5000; //200 us
-            _system_tick_period_ns = 200000;
+            _gpio_sys_interface.set_system_tick_rate(5000);
             break;
 
         default:
@@ -414,10 +393,6 @@ private:
             break;
         }
 
-        _analog_inputs.calc_and_set_adc_tick_rate(_system_tick_rate,
-                                                  _adc_chans_per_tick);
-
-        GPIO_LOG_INFO("System Tick rate set to %d Hz", _system_tick_rate);
         return GPIO_OK; // to suppress warning
     }
 
@@ -426,9 +401,9 @@ private:
      */
     inline void _reset_all_ctrlrs()
     {
-        _digital_inputs.reset_all_ctrlrs();
-        _digital_outputs.reset_all_ctrlrs();
-        _analog_inputs.reset_all_ctrlrs();
+        _digital_inputs.reset_all_ctrlr_vals();
+        _digital_outputs.reset_all_ctrlr_vals();
+        _analog_inputs.reset_all_ctrlr_vals();
 
         GPIO_LOG_INFO("All ctrlrs are reset to initial value");
     }
@@ -441,11 +416,11 @@ private:
      *         , digital outputs or analog inputs.
      *
      */
-    inline GpioReturnStatus _reset_ctrlr(int id)
+    inline GpioReturnStatus _reset_ctrlr_val(int id)
     {
-        if (_digital_inputs.reset_ctrlr(id) ||
-            _digital_outputs.reset_ctrlr(id) ||
-            _analog_inputs.reset_ctrlr(id))
+        if (_digital_inputs.reset_ctrlr_value(id) ||
+            _digital_outputs.reset_ctrlr_value(id) ||
+            _analog_inputs.reset_ctrlr_value(id))
         {
             GPIO_LOG_INFO("ctrlr id %d is reset to initial value", id);
             return GPIO_OK;
@@ -966,14 +941,16 @@ private:
         {
         case GPIO_SUB_CMD_STOP_RESET_SYSTEM:
             GPIO_LOG_INFO("Got a stop reset cmd, resetting..");
-            reset();
-            _tx_packet_fifo.send_ack(GPIO_OK, _current_system_tick,
+            reset_to_initial_state();
+            _tx_packet_fifo.send_ack(GPIO_OK,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             break;
 
         case GPIO_SUB_CMD_START_SYSTEM:
             GPIO_LOG_INFO("Got a start cmd");
-            _tx_packet_fifo.send_ack(_start(), _current_system_tick,
+            _tx_packet_fifo.send_ack(_start(),
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             break;
 
@@ -984,16 +961,18 @@ private:
                         packet.payload.system_tick_rate_data.gpio_system_tick_rate;
                 auto status = _set_system_tick_rate(
                         static_cast<GpioSystemTickRate>(new_tick_rate_hz));
-                _tx_packet_fifo.send_ack(status, _current_system_tick,
+                _tx_packet_fifo.send_ack(status,
+                                         _gpio_sys_interface.get_current_system_tick(),
                                          packet.sequence_no);
             }
             break;
 
         case GPIO_SUB_CMD_GET_BOARD_INFO:
             GPIO_LOG_INFO("Got a board info cmd");
-            _tx_packet_fifo.send_ack(GPIO_OK, _current_system_tick,
+            _tx_packet_fifo.send_ack(GPIO_OK,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
-            _tx_packet_fifo.send_board_info(_current_system_tick,
+            _tx_packet_fifo.send_board_info(_gpio_sys_interface.get_current_system_tick(),
                                             NumInputPins,
                                             NumOutputPins,
                                             NumAnalogPins,
@@ -1003,7 +982,8 @@ private:
         default:
             GPIO_LOG_WARNING("Invalid command by packet %d",
                              packet.sequence_no);
-            _tx_packet_fifo.send_ack(GPIO_INVALID_CMD, _current_system_tick,
+            _tx_packet_fifo.send_ack(GPIO_INVALID_CMD,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
         }
     }
@@ -1025,7 +1005,7 @@ private:
 
         case GPIO_SUB_CMD_RESET_CONTROLLER:
             GPIO_LOG_INFO("Got a reset ctrlr cmd");
-            status = _reset_ctrlr(
+            status = _reset_ctrlr_val(
                     packet.payload.reset_controller_data.controller_id);
             break;
 
@@ -1117,7 +1097,7 @@ private:
         }
 
         _tx_packet_fifo.send_ack(status,
-                                 _current_system_tick,
+                                 _gpio_sys_interface.get_current_system_tick(),
                                  packet.sequence_no);
     }
 
@@ -1137,11 +1117,11 @@ private:
         if (result.first)
         {
             _tx_packet_fifo.send_ack(GPIO_OK,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             _tx_packet_fifo.send_val(id,
                                      result.second,
-                                     _current_system_tick);
+                                     _gpio_sys_interface.get_current_system_tick());
             return;
         }
 
@@ -1149,11 +1129,11 @@ private:
         if (result.first)
         {
             _tx_packet_fifo.send_ack(GPIO_OK,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             _tx_packet_fifo.send_val(id,
                                      result.second,
-                                     _current_system_tick);
+                                     _gpio_sys_interface.get_current_system_tick());
             return;
         }
 
@@ -1161,17 +1141,17 @@ private:
         if (result.first)
         {
             _tx_packet_fifo.send_ack(GPIO_OK,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             _tx_packet_fifo.send_val(id,
                                      result.second,
-                                     _current_system_tick);
+                                     _gpio_sys_interface.get_current_system_tick());
             return;
         }
 
         GPIO_LOG_ERROR("Cannot get val. Invalid id %d", id);
         _tx_packet_fifo.send_ack(GPIO_INVALID_CONTROLLER_ID,
-                                 _current_system_tick,
+                                 _gpio_sys_interface.get_current_system_tick(),
                                  packet.sequence_no);
     }
 
@@ -1191,7 +1171,7 @@ private:
         if (status != GPIO_INVALID_CONTROLLER_ID)
         {
             _tx_packet_fifo.send_ack(status,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             return;
         }
@@ -1202,7 +1182,7 @@ private:
         {
             GPIO_LOG_ERROR("Cannot set val of a non Output Ctrlr id %d", id);
             _tx_packet_fifo.send_ack(GPIO_INVALID_CONTROLLER_ID,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             return;
         }
@@ -1211,7 +1191,7 @@ private:
         if (status != GPIO_INVALID_CONTROLLER_ID)
         {
             _tx_packet_fifo.send_ack(status,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             return;
         }
@@ -1220,29 +1200,22 @@ private:
         if (status != GPIO_INVALID_CONTROLLER_ID)
         {
             _tx_packet_fifo.send_ack(status,
-                                     _current_system_tick,
+                                     _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             return;
         }
 
         GPIO_LOG_ERROR("Cannot set val. Invalid id %d", id);
         _tx_packet_fifo.send_ack(GPIO_INVALID_CONTROLLER_ID,
-                                 _current_system_tick,
+                                 _gpio_sys_interface.get_current_system_tick(),
                                  packet.sequence_no);
 
         return;
     }
 
-    uint32_t _current_system_tick;
     bool _is_running;
-    int _system_tick_rate;
-    int _system_tick_period_ns;
-    int _adc_tick_rate;
-    int _adc_chans_per_tick;
 
-    uint32_t* _input_pin_data;
-    uint32_t* _output_pin_data;
-    uint32_t* _analog_pin_data;
+    GpioSysInterface _gpio_sys_interface;
 
     CtrlrSet<InputCtrlr<NumInputPins>, NumInputPins> _digital_inputs;
     CtrlrSet<OutputCtrlr<NumOutputPins>, NumOutputPins> _digital_outputs;

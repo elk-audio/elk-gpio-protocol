@@ -30,6 +30,7 @@
 
 #include "gpio_protocol/gpio_protocol.h"
 #include "gpio_fifo.h"
+#include "gpio_system_interface.h"
 
 namespace gpio {
 
@@ -86,26 +87,29 @@ template <int NumOutputPins>
 class OutputCtrlr : public MuxCtrlrInterface
 {
 public:
-    static_assert(NumOutputPins != 0);
+
+    OutputCtrlr() : _gpio_sys_interface(nullptr)
+    {
+        static_assert(NumOutputPins != 0);
+        reset_to_initial_state();
+    }
+
+    ~OutputCtrlr() = default;
 
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation.
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
+     * @brief Initialize this digital output controller.
+     * @param gpio_sys_interface The pointer to an instance of the
+     *        GpioSysInterface class needed for run time info of the gpio system
      */
-    inline void set_system_info(uint32_t* const pin_data,
-                                const uint32_t* current_system_tick)
+    void init(GpioSysInterface* gpio_sys_interface)
     {
-        _pin_data = pin_data;
-        _current_system_tick = current_system_tick;
+        _gpio_sys_interface = gpio_sys_interface;
     }
 
     /**
-     * @brief Initialize this controller to its default state.
+     * @brief Reset this controller to its default state.
      */
-    inline void init()
+    inline void reset_to_initial_state()
     {
         _id = 0;
         _is_active = false;
@@ -149,12 +153,12 @@ public:
     /**
      * @brief Reset this controller's value to its default.
      */
-    inline void reset_val()
+    inline void reset_ctrlr_val()
     {
         _val = 0;
         _previous_val = 0;
         _muted_val = 0;
-        _current_ctrlr_tick = *_current_system_tick;
+        _current_ctrlr_tick = _gpio_sys_interface->get_current_system_tick();
 
         if(_hw_type == GPIO_MUX_OUTPUT)
         {
@@ -170,9 +174,9 @@ public:
      * @param id the new id of this controller
      * @param type The hw type of this controller.
      */
-    inline void set_ctrlr_info(int id, GpioHwType type)
+    inline void activate(int id, GpioHwType type)
     {
-        init();
+        reset_to_initial_state();
 
         _id = id;
         _hw_type = type;
@@ -184,7 +188,7 @@ public:
             _mux_type.attached_ctrlrs.fill(-1);
         }
 
-        reset_val();
+        reset_ctrlr_val();
     }
 
     /**
@@ -502,7 +506,7 @@ public:
         /* If mux ctrlr has not been processed yet,
            the current id is the one after the mux has been
            processed */
-        if(_current_ctrlr_tick != *_current_system_tick)
+        if(_current_ctrlr_tick != _gpio_sys_interface->get_current_system_tick())
         {
             return _mux_type.next_active_id;
         }
@@ -586,11 +590,11 @@ private:
             // Set it on PinData according to the polarity configured
             if(pin_val == 0)
             {
-                _pin_data[pin_num] = _pin_off_val;
+                _gpio_sys_interface->set_digital_output_pin_val(_pin_off_val, pin_num);
             }
             else
             {
-                _pin_data[pin_num] = _pin_on_val;
+                _gpio_sys_interface->set_digital_output_pin_val(_pin_on_val, pin_num);
             }
         }
 
@@ -626,11 +630,11 @@ private:
 
             if(i < _val)
             {
-                _pin_data[pin_num] = _pin_on_val;
+                _gpio_sys_interface->set_digital_output_pin_val(_pin_on_val, pin_num);
             }
             else
             {
-                _pin_data[pin_num] = _pin_off_val;
+                _gpio_sys_interface->set_digital_output_pin_val(_pin_off_val, pin_num);
             }
         }
 
@@ -666,19 +670,18 @@ private:
 
             if(pin_index == _mux_type.current_active_pin_index)
             {
-                _pin_data[pin_num] = _pin_on_val;
+                _gpio_sys_interface->set_digital_output_pin_val(_pin_on_val, pin_num);
             }
             else
             {
-                _pin_data[pin_num] = _pin_off_val;
+                _gpio_sys_interface->set_digital_output_pin_val(_pin_off_val, pin_num);
             }
         }
 
-        _current_ctrlr_tick = *_current_system_tick;
+        _current_ctrlr_tick = _gpio_sys_interface->get_current_system_tick();
     }
 
-    uint32_t* _pin_data;
-    const uint32_t* _current_system_tick;
+    GpioSysInterface* _gpio_sys_interface;
 
     int _id;
     bool _is_active;

@@ -32,6 +32,7 @@
 #include "input_ctrlr.h"
 #include "analog_ctrlr.h"
 #include "gpio_fifo.h"
+#include "gpio_system_interface.h"
 
 namespace gpio {
 
@@ -47,71 +48,38 @@ class CtrlrSet
 {
 public:
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation. Only applicable when the container
-     *        holds elements of output controller type (CtrlrType = OutputCtrlr)
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
+     * @brief Constructor to initialize this container. Only applicable when the
+     *        container holds elements of output controller type
+     *        (CtrlrType = OutputCtrlr)
+     * @param gpio_sys_interface The pointer to an instance of the gpio system
+     *        interface
      */
-    inline void set_info(uint32_t* const pin_data,
-                         const uint32_t* const current_system_tick)
+    CtrlrSet(GpioSysInterface* gpio_sys_interface)
     {
         static_assert(std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value);
 
-        _num_ctrlrs = 0;
-        for(auto& ctrlr : _ctrlrs)
+        for(auto & ctrlr : _ctrlrs)
         {
-            ctrlr.set_system_info(pin_data, current_system_tick);
+            ctrlr.init(gpio_sys_interface);
         }
     }
 
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation. Only applicable when the container
-     *        holds elements of input controller type (CtrlrType = InputCtrlr)
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
-     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
+     * @brief Constructor to initialize this container. Not applicable when the
+     *        container holds elements of output controller type
+     *        (CtrlrType = OutputCtrlr)
+     * @param gpio_sys_interface The pointer to an instance of the gpio system
+     *        interface
+     * @param gpio_tx_packet_fifo Pointer to an instance of the tx packet fifo.
      */
-    inline void set_info(uint32_t* const pin_data,
-                         const uint32_t* const current_system_tick,
-                         GpioTxPacketFifo* tx_packet_fifo)
+    CtrlrSet(GpioSysInterface* gpio_sys_interface,
+            GpioTxPacketFifo* gpio_tx_packet_fifo)
     {
-        static_assert(std::is_same<CtrlrType, InputCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value);
 
-        _num_ctrlrs = 0;
-        _tx_packet_fifo = tx_packet_fifo;
-        for(auto& ctrlr : _ctrlrs)
+        for(auto & ctrlr : _ctrlrs)
         {
-            ctrlr.set_system_info(pin_data, current_system_tick, tx_packet_fifo);
-        }
-    }
-
-    /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation. Only applicable when the container
-     *        holds elements of analog controller type (CtrlrType = AnalogCtrlr)
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
-     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
-     * @param adc_chans_per_tick Number of adc channels sampled per system tick.
-     */
-    inline void set_info(uint32_t* const pin_data,
-                         const uint32_t* const current_system_tick,
-                         GpioTxPacketFifo* tx_packet_fifo,
-                         int adc_chans_per_tick)
-    {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
-
-        _num_ctrlrs = 0;
-        _tx_packet_fifo = tx_packet_fifo;
-        for(auto& ctrlr : _ctrlrs)
-        {
-            ctrlr.set_system_info(pin_data, current_system_tick, tx_packet_fifo,
-                                  adc_chans_per_tick);
+            ctrlr.init(gpio_sys_interface, gpio_tx_packet_fifo);
         }
     }
 
@@ -119,13 +87,13 @@ public:
      * @brief Function to initialize this container and set it to its default
      *        state.
      */
-    inline void init()
+    inline void reset_to_initial_state()
     {
         _num_ctrlrs = 0;
 
         for(auto& ctrlr : _ctrlrs)
         {
-            ctrlr.init();
+            ctrlr.reset_to_initial_state();
         }
     }
 
@@ -217,7 +185,7 @@ public:
      * @brief Resets the value of all the controllers in this container to its
      *        default.
      */
-    inline void reset_all_ctrlrs()
+    inline void reset_all_ctrlr_vals()
     {
         for(auto& ctrlr : _ctrlrs)
         {
@@ -226,7 +194,7 @@ public:
                 return;
             }
 
-            ctrlr.reset_val();
+            ctrlr.reset_ctrlr_val();
         }
     }
 
@@ -235,7 +203,7 @@ public:
      * @param id The controller id.
      * @return True if controller exists, false if not
      */
-    inline bool reset_ctrlr(int id)
+    inline bool reset_ctrlr_value(int id)
     {
         for(auto& ctrlr : _ctrlrs)
         {
@@ -246,7 +214,7 @@ public:
 
             if(ctrlr.get_id() == id)
             {
-                ctrlr.reset_val();
+                ctrlr.reset_ctrlr_val();
                 return true;
             }
         }
@@ -265,8 +233,6 @@ public:
      */
     inline GpioReturnStatus add_ctrlr(int id, GpioHwType type)
     {
-        /* Only applicable to InputCtrlr and OutputCtrlr<NumPins> types. AnalogCtr type
-           should use the function below */
         static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
         if(_num_ctrlrs == NumPins)
         {
@@ -282,7 +248,7 @@ public:
             }
         }
 
-        _ctrlrs[_num_ctrlrs].set_ctrlr_info(id, type);
+        _ctrlrs[_num_ctrlrs].activate(id, type);
         _num_ctrlrs++;
 
         GPIO_LOG_INFO("Added new ctrlr of id %d", id);
@@ -306,7 +272,7 @@ public:
         {
             if(!ctrlr.is_active())
             {
-                ctrlr.set_ctrlr_info(id);
+                ctrlr.activate(id);
                 _num_ctrlrs++;
 
                 GPIO_LOG_INFO("Added new ctrlr of id %d", id);
@@ -565,8 +531,9 @@ public:
     }
 
     /**
-     * @brief Sets the time constant for the filter for an analog controller of
-     * a given ID.
+     * @brief Sets the time constant for the filter for a controller of a given
+     *         ID. Only applicable when the container holds elements of analog
+     *        controller type (CtrlrType = AnalogCtrlr)
      * @param id The id of the analog controller
      * @param time_constant The time constant
      * @return GPIO_INVALID_CONTROLLER_ID if the id does not exist in the list
@@ -588,17 +555,17 @@ public:
     }
 
     /**
-     * @brief Calculate the adc tick rate from the system tick rate and from
-     *        how many channels are sampled per tick.
-     * @param system_tick_rate  The system tick rate.
-     * @param adc_chans_per_tick Number of channels sampled per tick.
+     * @brief Reset the digital filters of the controller. Only applicable when
+     *        the container holds elements of analog controller type
+     *        (CtrlrType = AnalogCtrlr)
+     *
      */
-    inline void calc_and_set_adc_tick_rate(int system_tick_rate, int adc_chans_per_tick)
+    inline void warmup_filter()
     {
-        int adc_tick_rate = (system_tick_rate * adc_chans_per_tick)/NumPins;
-        for(auto& ctrlr : _ctrlrs)
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        for(int i = 0; i < _num_ctrlrs; i++)
         {
-            ctrlr.set_adc_sampling_rate(adc_tick_rate);
+            _ctrlrs[i].warmup_filter();
         }
     }
 
@@ -678,8 +645,6 @@ private:
 
     std::array<CtrlrType, NumPins> _ctrlrs;
     int _num_ctrlrs;
-
-    GpioTxPacketFifo* _tx_packet_fifo;
 };
 
 /**
@@ -692,58 +657,36 @@ class CtrlrSet<CtrlrType, 0>
 {
 public:
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation. Only applicable when the container
-     *        holds elements of output controller type (CtrlrType = OutputCtrlr)
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
+     * @brief Constructor to initialize this container. Only applicable when the
+     *        container holds elements of output controller type
+     *        (CtrlrType = OutputCtrlr)
+     * @param gpio_sys_interface The pointer to an instance of the gpio system
+     *        interface
      */
-    void set_info(uint32_t* const pin_data,
-                  const uint32_t* const current_system_tick)
+    CtrlrSet(__attribute__((unused)) GpioSysInterface* gpio_sys_interface)
     {
         static_assert(std::is_same<CtrlrType, OutputCtrlr<0>>::value);
     }
 
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation. Only applicable when the container
-     *        holds elements of input controller type (CtrlrType = InputCtrlr)
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
-     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
+     * @brief Constructor to initialize this container. Not applicable when the
+     *        container holds elements of output controller type
+     *        (CtrlrType = OutputCtrlr)
+     * @param gpio_sys_interface The pointer to an instance of the gpio system
+     *        interface
+     * @param gpio_tx_packet_fifo Pointer to an instance of the tx packet fifo.
      */
-    void set_info(uint32_t* const pin_data,
-                  const uint32_t* const current_system_tick,
-                  GpioTxPacketFifo* tx_packet_fifo)
+    CtrlrSet(__attribute__((unused)) GpioSysInterface* gpio_sys_interface,
+             __attribute__((unused)) GpioTxPacketFifo* gpio_tx_packet_fifo)
     {
-        static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value);
     }
 
     /**
-     * @brief Function to set internal system information. This function should
-     *        be called after instantiation. Only applicable when the container
-     *        holds elements of analog controller type (CtrlrType = AnalogCtrlr)
-     * @param pin_data The pointer to the memory location containing the
-     *                 sampled data of the pins.
-     * @param current_system_tick Pointer to the system tick counter.
-     * @param tx_packet_fifo Pointer to an instance of a tx packet fifo.
-     * @param adc_chans_per_tick Number of adc channels sampled per system tick.
-     */
-    void set_info(uint32_t* const pin_data,
-                  const uint32_t* const current_system_tick,
-                  GpioTxPacketFifo* tx_packet_fifo,
-                  int adc_chans_per_tick)
-    {
-        static_assert(std::is_same<CtrlrType, OutputCtrlr<0>>::value);
-    }
-
-    /**
-     * @brief Function to initialize this container and set it to its default
+     * @brief Function to reset this container and set it to its default
      *        state.
      */
-    void init()
+    void reset_to_initial_state()
     {}
 
     /**
@@ -763,7 +706,7 @@ public:
      * @return Always returns false as there are no controllers in this
      *         container when number of pins is 0
      */
-    constexpr bool does_id_exist(int id) const
+    constexpr bool does_id_exist(__attribute__((unused)) int id) const
     {
         return false;
     }
@@ -795,7 +738,7 @@ public:
      *        default. As there are no controllers in this container when number
      *        of pins is 0, this function does nothing.
      */
-    void reset_all_ctrlrs()
+    void reset_all_ctrlr_vals()
     {}
 
     /**
@@ -804,7 +747,7 @@ public:
      * @return False as there are no controllers in this container when number
      *         of pins is 0
      */
-    constexpr bool reset_ctrlr(int id)
+    constexpr bool reset_ctrlr_value(__attribute__((unused)) int id)
     {
         return false;
     }
@@ -816,7 +759,8 @@ public:
      * @param type The hw type of the new controller
      * @return GPIO_NO_PINS_AVAILABLE as there are zero pins in this container.
      */
-    constexpr GpioReturnStatus add_ctrlr(int id, GpioHwType type)
+    constexpr GpioReturnStatus add_ctrlr(__attribute__((unused)) int id,
+                                         __attribute__((unused)) GpioHwType type)
     {
         static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
         return GPIO_NO_PINS_AVAILABLE;
@@ -828,7 +772,7 @@ public:
      * @param id The id of the new controller
      * @return GPIO_NO_PINS_AVAILABLE as there are zero pins in this container.
      */
-    constexpr GpioReturnStatus add_ctrlr(int id)
+    constexpr GpioReturnStatus add_ctrlr(__attribute__((unused)) int id)
     {
         static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
 
@@ -841,7 +785,7 @@ public:
      * @return Always returns nullptr as there are no controllers in this
      *         container when number of pins is 0
      */
-    constexpr CtrlrType* get_ctrlr(int id)
+    constexpr CtrlrType* get_ctrlr(__attribute__((unused)) int id)
     {
         return nullptr;
     }
@@ -857,7 +801,9 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus attach_to_mux(int id, uint32_t mux_pin, MuxCtrlrInterface* const mux_ctrlr_intf)
+    constexpr GpioReturnStatus attach_to_mux(__attribute__((unused)) int id,
+                                             __attribute__((unused)) uint32_t mux_pin,
+                                             __attribute__((unused)) MuxCtrlrInterface* const mux_ctrlr_intf)
     {
         static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
 
@@ -873,7 +819,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_pol(int id, ControllerPolarity pol)
+    constexpr GpioReturnStatus set_pol(__attribute__((unused)) int id,
+                                       __attribute__((unused)) ControllerPolarity pol)
     {
         static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
 
@@ -889,7 +836,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_tick_rate(int id, int tick_rate)
+    constexpr GpioReturnStatus set_tick_rate(__attribute__((unused)) int id,
+                                             __attribute__((unused)) int tick_rate)
     {
         static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value);
 
@@ -905,7 +853,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_notif_mode(int id, ControllerNotifMode notif_mode)
+    constexpr GpioReturnStatus set_notif_mode(__attribute__((unused)) int id,
+                                              __attribute__((unused)) ControllerNotifMode notif_mode)
     {
         static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value);
 
@@ -920,9 +869,9 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus add_pins(int id,
-                                        int num_pins,
-                                        const uint8_t* const pin_list)
+    constexpr GpioReturnStatus add_pins(__attribute__((unused)) int id,
+                                        __attribute__((unused)) int num_pins,
+                                        __attribute__((unused)) const uint8_t* const pin_list)
     {
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -934,7 +883,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_mute_status(int id, ControllerMuteStatus mute_status)
+    constexpr GpioReturnStatus set_mute_status(__attribute__((unused)) int id,
+                                               __attribute__((unused)) ControllerMuteStatus mute_status)
     {
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -949,7 +899,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_res_diff(int analog_ctrlr_id, int adc_res_diff)
+    constexpr GpioReturnStatus set_res_diff(__attribute__((unused)) int analog_ctrlr_id,
+                                            __attribute__((unused)) int adc_res_diff)
     {
         static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
 
@@ -966,9 +917,9 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_range(int id,
-                                         uint32_t min_val,
-                                         uint32_t max_val)
+    constexpr GpioReturnStatus set_range(__attribute__((unused)) int id,
+                                         __attribute__((unused)) uint32_t min_val,
+                                         __attribute__((unused)) uint32_t max_val)
     {
         // Only applicable for InputCtrlr
         static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value);
@@ -985,8 +936,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_debounce_mode(int id,
-                                                 ControllerDebounceMode debounce_mode)
+    constexpr GpioReturnStatus set_debounce_mode(__attribute__((unused)) int id,
+                                                 __attribute__((unused)) ControllerDebounceMode debounce_mode)
     {
         static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value);
 
@@ -1002,22 +953,23 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_time_constant(int id, float time_constant)
+    constexpr GpioReturnStatus set_time_constant(__attribute__((unused)) int id,
+                                                 __attribute__((unused)) float time_constant)
     {
         static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
     /**
-     * @brief Calculate the adc tick rate from the system tick rate and from
-     *        how many channels are sampled per tick. As there are no
-     *        controllers in this container when number of pins is 0, this
-     *        function does nothing.
-     * @param system_tick_rate  The system tick rate.
-     * @param adc_chans_per_tick Number of channels sampled per tick.
+     * @brief Reset the digital filters of the controller. Only applicable when
+     *        the container holds elements of analog controller type
+     *        (CtrlrType = AnalogCtrlr)
+     *
      */
-    void calc_and_set_adc_tick_rate(int system_tick_rate, int adc_chans_per_tick)
-    {}
+    inline void warmup_filter()
+    {
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+    }
 
     /**
      * @brief Get the value of a controller
@@ -1025,7 +977,7 @@ public:
      * @return An std pair of (false, 0) as there are no controllers in this
      *         container when number of pins is 0
      */
-    constexpr std::pair<bool, uint32_t> get_val(int id)
+    constexpr std::pair<bool, uint32_t> get_val(__attribute__((unused)) int id)
     {
         return std::make_pair(false, 0);
     }
@@ -1037,7 +989,8 @@ public:
      * @return Always returns GPIO_INVALID_CONTROLLER_ID as there are no
      *         controllers in this container when number of pins is 0
      */
-    constexpr GpioReturnStatus set_val(int id, uint32_t val)
+    constexpr GpioReturnStatus set_val(__attribute__((unused)) int id,
+                                       __attribute__((unused)) uint32_t val)
     {
         return GPIO_INVALID_CONTROLLER_ID;
     }

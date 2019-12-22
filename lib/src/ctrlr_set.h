@@ -114,14 +114,9 @@ public:
      */
     inline bool does_id_exist(int id)
     {
-        for(auto& ctrlr : _ctrlrs)
+        for(int i = 0; i < _num_ctrlrs; i++)
         {
-            if(!ctrlr.is_active())
-            {
-                break;
-            }
-
-            if(ctrlr.get_id() == id)
+            if(_ctrlrs[i].get_id() == id)
             {
                 return true;
             }
@@ -137,14 +132,9 @@ public:
      */
     inline bool check_ctrlr_init_status()
     {
-        for(auto& ctrlr : _ctrlrs)
+        for(int i = 0; i < _num_ctrlrs; i++)
         {
-            if(!ctrlr.is_active())
-            {
-                break;
-            }
-
-            if(!ctrlr.is_init())
+            if(!_ctrlrs[i].is_init())
             {
                 return false;
             }
@@ -165,14 +155,9 @@ public:
 
         used_pin_list.fill(0);
 
-        for(auto& ctrlr : _ctrlrs)
+        for(int i = 0; i < _num_ctrlrs; i++)
         {
-            if(!ctrlr.is_active())
-            {
-                break;
-            }
-
-            if(ctrlr.check_duplicated_pins(used_pin_list, num_used_pins))
+            if(_ctrlrs[i].check_duplicated_pins(used_pin_list, num_used_pins))
             {
                 return true;
             }
@@ -187,14 +172,9 @@ public:
      */
     inline void reset_all_ctrlr_vals()
     {
-        for(auto& ctrlr : _ctrlrs)
+        for(int i = 0; i < _num_ctrlrs; i++)
         {
-            if(!ctrlr.is_active())
-            {
-                return;
-            }
-
-            ctrlr.reset_ctrlr_val();
+            _ctrlrs[i].reset_ctrlr_val();
         }
     }
 
@@ -205,21 +185,13 @@ public:
      */
     inline bool reset_ctrlr_value(int id)
     {
-        for(auto& ctrlr : _ctrlrs)
+        auto ctrlr_num = _get_ctrlr_num(id);
+        if(ctrlr_num < 0)
         {
-            if(!ctrlr.is_active())
-            {
-                break;
-            }
-
-            if(ctrlr.get_id() == id)
-            {
-                ctrlr.reset_ctrlr_val();
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        _ctrlrs[ctrlr_num].reset_ctrlr_val();
     }
 
     /**
@@ -234,18 +206,16 @@ public:
     inline GpioReturnStatus add_ctrlr(int id, GpioHwType type)
     {
         static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+
         if(_num_ctrlrs == NumPins)
         {
             GPIO_LOG_ERROR("Cannot add new ctrlr of id %d, All pins are used up", id);
             return GPIO_NO_PINS_AVAILABLE;
         }
 
-        for(int i = 0; i < _num_ctrlrs; i++)
+        if(does_id_exist(id))
         {
-            if(_ctrlrs[i].get_id() == id)
-            {
-                return GPIO_INVALID_CONTROLLER_ID;
-            }
+            return GPIO_INVALID_CONTROLLER_ID;
         }
 
         _ctrlrs[_num_ctrlrs].activate(id, type);
@@ -268,25 +238,23 @@ public:
         // This function is only applicable for AnalogCtrlr
         static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
 
-        for(auto& ctrlr : _ctrlrs)
+        // each ctrlr needs atleast 1 pin
+        if(_num_ctrlrs == NumPins)
         {
-            if(!ctrlr.is_active())
-            {
-                ctrlr.activate(id);
-                _num_ctrlrs++;
-
-                GPIO_LOG_INFO("Added new ctrlr of id %d", id);
-                return GPIO_OK;
-            }
-
-            if(ctrlr.get_id() == id)
-            {
-                return GPIO_INVALID_CONTROLLER_ID;
-            }
+            GPIO_LOG_ERROR("Cannot add new ctrlr of id %d, All pins are used up", id);
+            return GPIO_NO_PINS_AVAILABLE;
         }
 
-        GPIO_LOG_ERROR("Cannot add new ctrlr of id %d, All pins are used up", id);
-        return GPIO_NO_PINS_AVAILABLE;
+        if(does_id_exist(id))
+        {
+            return GPIO_INVALID_CONTROLLER_ID;
+        }
+
+        _ctrlrs[_num_ctrlrs].activate(id);
+        _num_ctrlrs++;
+
+        GPIO_LOG_INFO("Added new ctrlr of id %d", id);
+        return GPIO_OK;
     }
 
     /**
@@ -624,20 +592,12 @@ private:
      */
     inline int _get_ctrlr_num(int id)
     {
-        int ctrlr_num = 0;
-        for(auto& ctrlr : _ctrlrs)
+        for(int i = 0; i < _num_ctrlrs; i++)
         {
-            if(!ctrlr.is_active())
+            if(_ctrlrs[i].get_id() == id)
             {
-                break;
+                return i;
             }
-
-            if(ctrlr.get_id() == id)
-            {
-                return ctrlr_num;
-            }
-
-            ctrlr_num++;
         }
 
         return -1;

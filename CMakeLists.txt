@@ -22,6 +22,6 @@ if (${GPIO_PROTOCOL_BUILD_CLIENT_LIB})
         set(GPIO_LOG_LEVEL_DEFINE "-DGPIO_LOG_LEVEL_ERROR")
     endif ()
 
-    target_compile_options(gpio_protocol_client INTERFACE -std=c++14 -Wall -Wextra -Wno-sign-compare)
+    target_compile_options(gpio_protocol_client INTERFACE -Wall -Wextra -Wno-sign-compare)
     target_compile_definitions(gpio_protocol_client INTERFACE ${GPIO_LOG_LEVEL_DEFINE})
 endif ()

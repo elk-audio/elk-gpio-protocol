@@ -1,16 +1,39 @@
-/**
- * @brief Protocol definition for controlling GPIO sensors
+/*
+ * Copyright 2019 Modern Ancient Instruments Networked AB, dba Elk
+ * Gpio Protocol is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Gpio Protocol is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Gpio Protocol. If not, see http://www.gnu.org/licenses/ .
  */
+
+/**
+ * @brief Protocol for communicating with devices controlling GPIOs
+ *
+ * @copyright 2019 Modern Ancient Instruments Networked AB, dba Elk, Stockholm
+ */
+
 #ifndef GPIO_PROTOCOL_H_
 #define GPIO_PROTOCOL_H_
 
 #include "stdint.h"
 
 #ifdef __cplusplus
-
+#include <cstddef>
 #include <cassert>
 namespace gpio {
 #endif
+
+#define GPIO_PROTOCOL_VERSION_MAJOR 0
+#define GPIO_PROTOCOL_VERSION_MINOR 2
+#define GPIO_PROTOCOL_VERSION_REV 0
 
 typedef enum GpioCommand
 {
@@ -29,7 +52,6 @@ typedef enum GpioSystemSubCommand
 {
     GPIO_SUB_CMD_STOP_RESET_SYSTEM = 0,
     GPIO_SUB_CMD_START_SYSTEM,
-    GPIO_SUB_CMD_STOP_SYSTEM,
     GPIO_SUB_CMD_SET_SYSTEM_TICK_RATE,
     GPIO_SUB_CMD_GET_BOARD_INFO
 } GpioSystemSubCommand;
@@ -73,10 +95,10 @@ typedef enum GpioConfigSubCommand
     GPIO_SUB_CMD_SET_INPUT_CONTROLLER_NOTIF_MODE,
     GPIO_SUB_CMD_ADD_PINS_TO_CONTROLLER,
     GPIO_SUB_CMD_MUTE_UNMUTE_CONTROLLER,
-    GPIO_SUB_CMD_REMOVE_CONTROLLER,
     GPIO_SUB_CMD_SET_ANALOG_CONTROLLER_RES,
     GPIO_SUB_CMD_SET_CONTROLLER_RANGE,
-    GPIO_SUB_CMD_SET_CONTROLLER_DEBOUNCE_MODE
+    GPIO_SUB_CMD_SET_CONTROLLER_DEBOUNCE_MODE,
+    GPIO_SUB_CMD_SET_ANALOG_TIME_CONSTANT
 } GpioConfigSubCommand;
 
 /*----------  GPIO_SUB_CMD_RESET_CONTROLLER payload data structure  ----------*/
@@ -94,8 +116,7 @@ typedef enum GpioHwType
     GPIO_STEPPED_OUTPUT,
     GPIO_MUX_OUTPUT,
     GPIO_N_WAY_SWITCH,
-    GPIO_ROTARY_ENCODER,
-    GPIO_AUDIO_MUTE_BUTTON
+    GPIO_ROTARY_ENCODER
 } GpioHwType;
 
 typedef struct AddControllerData
@@ -168,12 +189,6 @@ typedef struct ControllerMuteData
     uint8_t mute_status;
 } ControllerMuteData;
 
-/*----------  GPIO_SUB_CMD_REMOVE_CONTROLLER payload data structure  ----------*/
-typedef struct RemoveControllerData
-{
-    uint8_t controller_id;
-} RemoveControllerData;
-
 /*----------  GPIO_SUB_CMD_SET_ANALOG_CONTROLLER_RES payload data structure  ----------*/
 typedef struct AnalogControllerResData
 {
@@ -196,11 +211,20 @@ typedef enum ControllerDebounceMode
     GPIO_CONTROLLER_DEBOUNCE_DISABLED,
 } ControllerDebounceMode;
 
+/*----------  GPIO_SUB_CMD_SET_DEBOUNCE_MODE payload data structure  ----------*/
 typedef struct ControllerDebounceData
 {
     uint8_t controller_id;
     uint8_t controller_debounce_mode;
 } ControllerDebounceData;
+
+/*----------  GPIO_SUB_CMD_SET_ANALOG_TIME_CONSTANT payload data structure  ----------*/
+typedef struct AnalogTimeConstantData
+{
+    uint8_t controller_id;
+    uint8_t reserved[3];
+    float time_constant;
+} AnalogTimeConstantData;
 
 /*=====================================
 =          GPIO_ACK layout            =
@@ -224,7 +248,8 @@ typedef enum GpioReturnStatus
     GPIO_RES_OUT_OF_RANGE,
     GPIO_UNRECOGNIZED_CMD,
     GPIO_PARAMETER_ERROR,
-    GPIO_INVALID_COMMAND_FOR_CONTROLLER
+    GPIO_INVALID_COMMAND_FOR_CONTROLLER,
+    GPIO_INVALID_RUNTIME_CONFIG
 } GpioReturnStatus;
 
 typedef struct GpioAckData
@@ -268,10 +293,10 @@ typedef union PayloadData
     ControllerNotifData controller_notif_data;
     ControllerPinsData controller_pins_data;
     ControllerMuteData controller_mute_data;
-    RemoveControllerData remove_controller_data;
     AnalogControllerResData analog_controller_res_data;
     ControllerRangeData controller_range_data;
     ControllerDebounceData controller_debounce_data;
+    AnalogTimeConstantData time_constant_data;
 
     GpioValueRequest gpio_value_request;
     GpioValueData gpio_value_data;
@@ -295,6 +320,7 @@ typedef struct GpioPacket
 
 #ifdef __cplusplus
 static_assert(sizeof(GpioPacket) == 32);
+constexpr size_t GPIO_PACKET_SIZE = sizeof(GpioPacket);
 } // end namespace gpio
 #endif
 

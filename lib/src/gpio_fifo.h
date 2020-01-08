@@ -56,8 +56,7 @@ namespace gpio {
     #define GPIO_LOG_GET_MSG(msg) (GpioLogFifo::get_logger_instance())->get_log_msg(msg);
 #else
     #define GPIO_LOG_RESET
-    #define GPIO_LOG_HAS_NEW_MSG false
-    #define GPIO_LOG_GET_MSG(msg) nullptr
+    #define GPIO_LOG_GET_MSG(msg) false
 #endif
 
 #ifdef GPIO_LOG_LEVEL_INFO

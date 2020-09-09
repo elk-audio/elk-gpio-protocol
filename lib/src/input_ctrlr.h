@@ -48,7 +48,7 @@ class InputCtrlr
 public:
     InputCtrlr()
     {
-        static_assert(NumInputPins != 0);
+        static_assert(NumInputPins != 0, "Input Ctrlr cannot be init with 0 pins");
         reset_to_initial_state();
     }
 

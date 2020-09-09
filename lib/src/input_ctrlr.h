@@ -21,7 +21,7 @@
  */
 
 #ifndef INPUT_CTRLR_H_
-#define INPUT_CTLRL_H_
+#define INPUT_CTRLR_H_
 
 #include "gpio_protocol/gpio_protocol.h"
 #include "gpio_fifo.h"

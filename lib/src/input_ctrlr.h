@@ -23,8 +23,6 @@
 #ifndef INPUT_CTRLR_H_
 #define INPUT_CTLRL_H_
 
-#include <variant>
-
 #include "gpio_protocol/gpio_protocol.h"
 #include "gpio_fifo.h"
 #include "gpio_system_interface.h"

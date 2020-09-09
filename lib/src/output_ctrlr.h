@@ -25,7 +25,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <variant>
 #include <array>
 
 #include "gpio_protocol/gpio_protocol.h"

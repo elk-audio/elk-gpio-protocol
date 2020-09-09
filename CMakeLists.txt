@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.8)
-project(gpio_protcol)
-
 add_library(gpio_protocol INTERFACE)
 target_include_directories(gpio_protocol INTERFACE include)
 

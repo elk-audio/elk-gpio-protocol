@@ -196,7 +196,7 @@ public:
      * @brief Handle a gpio protocol packet sent by the host.
      * @param rx_packet
      */
-    inline void handle_rx_packet(const gpio::GpioPacket &rx_packet)
+    inline void handle_rx_packet(const GpioPacket &rx_packet)
     {
         switch (rx_packet.command)
         {
@@ -282,7 +282,7 @@ public:
      *        if logging is disabled, it will always return nullptr
      * @return True if log msg exists, false if not.
      */
-    inline bool get_log_msg(GpioLogMsg** msg)
+    inline bool get_log_msg(__attribute__((unused)) GpioLogMsg** msg)
     {
         return GPIO_LOG_GET_MSG(msg);
     }

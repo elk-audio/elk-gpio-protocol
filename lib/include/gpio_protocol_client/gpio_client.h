@@ -1166,17 +1166,6 @@ private:
             return;
         }
 
-        /* Digital inputs and analog inputs can have their value set before
-           the gpio process is started. This becomes their initial value */
-        if (_is_running)
-        {
-            GPIO_LOG_ERROR("Cannot set val of a non Output Ctrlr id %d", id);
-            _tx_packet_fifo.send_ack(GPIO_INVALID_CONTROLLER_ID,
-                                     _gpio_sys_interface.get_current_system_tick(),
-                                     packet.sequence_no);
-            return;
-        }
-
         status = _digital_inputs.set_val(id, val);
         if (status != GPIO_INVALID_CONTROLLER_ID)
         {

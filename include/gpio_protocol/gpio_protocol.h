@@ -33,7 +33,7 @@ namespace gpio {
 
 #define GPIO_PROTOCOL_VERSION_MAJOR 0
 #define GPIO_PROTOCOL_VERSION_MINOR 2
-#define GPIO_PROTOCOL_VERSION_REV 0
+#define GPIO_PROTOCOL_VERSION_REV 2
 
 typedef enum GpioCommand
 {

@@ -21,9 +21,7 @@
  */
 
 #ifndef INPUT_CTRLR_H_
-#define INPUT_CTLRL_H_
-
-#include <variant>
+#define INPUT_CTRLR_H_
 
 #include "gpio_protocol/gpio_protocol.h"
 #include "gpio_fifo.h"
@@ -35,8 +33,8 @@ constexpr uint32_t DEBOUNCE_BUFFER_ON_VAL_ACTIVE_HIGH = 0xFFFFFFFF;
 constexpr uint32_t DEBOUNCE_BUFFER_OFF_VAL_ACTIVE_HIGH = 0;
 constexpr uint32_t DEBOUNCE_BUFFER_ON_VAL_ACTIVE_LOW = DEBOUNCE_BUFFER_OFF_VAL_ACTIVE_HIGH;
 constexpr uint32_t DEBOUNCE_BUFFER_OFF_VAL_ACTIVE_LOW = DEBOUNCE_BUFFER_ON_VAL_ACTIVE_HIGH;
-constexpr uint32_t ENC_CW_TRANSITION_SNAPSHOT_ACTIVE_HIGH = 0x87;
-constexpr uint32_t ENC_CCW_TRANSITION_SNAPSHOT_ACTIVE_HIGH = 0x4B;
+constexpr uint32_t ENC_CW_TRANSITION_SNAPSHOT_ACTIVE_HIGH = 0x34;
+constexpr uint32_t ENC_CCW_TRANSITION_SNAPSHOT_ACTIVE_HIGH = 0x1C;
 constexpr uint32_t ENC_CW_TRANSITION_SNAPSHOT_ACTIVE_LOW =  0x4B;
 constexpr uint32_t ENC_CCW_TRANSITION_SNAPSHOT_ACTIVE_LOW = 0x87;
 
@@ -50,7 +48,7 @@ class InputCtrlr
 public:
     InputCtrlr()
     {
-        static_assert(NumInputPins != 0);
+        static_assert(NumInputPins != 0, "Input Ctrlr cannot be init with 0 pins");
         reset_to_initial_state();
     }
 

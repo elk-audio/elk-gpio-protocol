@@ -47,7 +47,8 @@ public:
                     _gpio_sys_interface(nullptr)
 
     {
-        static_assert(NumAnalogPins != 0);
+        static_assert(NumAnalogPins != 0,
+        "AnalogCtrlr cannot be init with 0 pins");
         reset_to_initial_state();
     }
 

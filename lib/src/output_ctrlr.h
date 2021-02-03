@@ -25,7 +25,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <variant>
 #include <array>
 
 #include "gpio_protocol/gpio_protocol.h"
@@ -90,7 +89,7 @@ public:
 
     OutputCtrlr() : _gpio_sys_interface(nullptr)
     {
-        static_assert(NumOutputPins != 0);
+        static_assert(NumOutputPins != 0, "Output Ctrlr cannot be init with 0 pins");
         reset_to_initial_state();
     }
 

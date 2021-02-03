@@ -196,7 +196,7 @@ public:
      * @brief Handle a gpio protocol packet sent by the host.
      * @param rx_packet
      */
-    inline void handle_rx_packet(const gpio::GpioPacket &rx_packet)
+    inline void handle_rx_packet(const GpioPacket &rx_packet)
     {
         switch (rx_packet.command)
         {
@@ -282,7 +282,7 @@ public:
      *        if logging is disabled, it will always return nullptr
      * @return True if log msg exists, false if not.
      */
-    inline bool get_log_msg(GpioLogMsg** msg)
+    inline bool get_log_msg(__attribute__((unused)) GpioLogMsg** msg)
     {
         return GPIO_LOG_GET_MSG(msg);
     }
@@ -1161,17 +1161,6 @@ private:
         if (status != GPIO_INVALID_CONTROLLER_ID)
         {
             _tx_packet_fifo.send_ack(status,
-                                     _gpio_sys_interface.get_current_system_tick(),
-                                     packet.sequence_no);
-            return;
-        }
-
-        /* Digital inputs and analog inputs can have their value set before
-           the gpio process is started. This becomes their initial value */
-        if (_is_running)
-        {
-            GPIO_LOG_ERROR("Cannot set val of a non Output Ctrlr id %d", id);
-            _tx_packet_fifo.send_ack(GPIO_INVALID_CONTROLLER_ID,
                                      _gpio_sys_interface.get_current_system_tick(),
                                      packet.sequence_no);
             return;

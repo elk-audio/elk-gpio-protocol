@@ -319,9 +319,11 @@ typedef struct GpioPacket
 } GpioPacket;
 
 #ifdef __cplusplus
-static_assert(sizeof(GpioPacket) == 32);
+static_assert(sizeof(GpioPacket) == 32, "Size of GpioPacket is not 32 bytes!");
 constexpr size_t GPIO_PACKET_SIZE = sizeof(GpioPacket);
 } // end namespace gpio
+#else
+#define GPIO_PACKET_SIZE 32
 #endif
 
 #endif // GPIO_PROTOCOL_H_

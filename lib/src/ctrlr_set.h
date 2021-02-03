@@ -56,7 +56,8 @@ public:
      */
     CtrlrSet(GpioSysInterface* gpio_sys_interface)
     {
-        static_assert(std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value,
+                      "Only applicable for OutputCtrlr type");
 
         for(auto & ctrlr : _ctrlrs)
         {
@@ -75,7 +76,8 @@ public:
     CtrlrSet(GpioSysInterface* gpio_sys_interface,
             GpioTxPacketFifo* gpio_tx_packet_fifo)
     {
-        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value,
+                      "Not applicable for OutputCtrlr type");
 
         for(auto & ctrlr : _ctrlrs)
         {
@@ -206,7 +208,8 @@ public:
      */
     inline GpioReturnStatus add_ctrlr(int id, GpioHwType type)
     {
-        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Not applicable for AnalogCtrlr type");
 
         if(_num_ctrlrs == NumPins)
         {
@@ -237,7 +240,8 @@ public:
     inline GpioReturnStatus add_ctrlr(int id)
     {
         // This function is only applicable for AnalogCtrlr
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Only applicable for AnalogCtrlr type");
 
         // each ctrlr needs atleast 1 pin
         if(_num_ctrlrs == NumPins)
@@ -290,7 +294,8 @@ public:
     inline GpioReturnStatus attach_to_mux(int id, uint32_t mux_pin, MuxCtrlrInterface* const mux_ctrlr_intf)
     {
         // Not applicable for AnalogCtrlr
-        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Not applicable for AnalogCtrlr type");
 
         if(mux_ctrlr_intf == nullptr)
         {
@@ -317,7 +322,8 @@ public:
      */
     inline GpioReturnStatus set_pol(int id, ControllerPolarity pol)
     {
-        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Not applicable for AnalogCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(id);
         if(ctrlr_num < 0)
@@ -339,7 +345,8 @@ public:
      */
     inline GpioReturnStatus set_tick_rate(int id, int tick_rate)
     {
-        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value,
+                      "Not applicable for OutputCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(id);
         if(ctrlr_num < 0)
@@ -361,7 +368,8 @@ public:
      */
     inline GpioReturnStatus set_notif_mode(int id, ControllerNotifMode notif_mode)
     {
-        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<NumPins>>::value,
+                      "Not applicable for OutputCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(id);
         if(ctrlr_num < 0)
@@ -441,7 +449,8 @@ public:
     */
     inline GpioReturnStatus set_res_diff(int analog_ctrlr_id, int adc_res_diff)
     {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Only applicable for AnalogCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(analog_ctrlr_id);
         if(ctrlr_num < 0)
@@ -466,7 +475,8 @@ public:
                                       uint32_t min_val,
                                       uint32_t max_val)
     {
-        static_assert(std::is_same<CtrlrType, InputCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, InputCtrlr<NumPins>>::value,
+                      "Only applicable for InputCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(id);
         if(ctrlr_num < 0)
@@ -488,7 +498,8 @@ public:
     inline GpioReturnStatus set_debounce_mode(int id,
                                               ControllerDebounceMode debounce_mode)
     {
-        static_assert(std::is_same<CtrlrType, InputCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, InputCtrlr<NumPins>>::value,
+                      "Only applicable for InputCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(id);
         if(ctrlr_num < 0)
@@ -512,7 +523,8 @@ public:
     inline GpioReturnStatus set_time_constant(int id, float time_constant)
     {
         // Only applicable to analog controller types
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Only applicable for AnalogCtrlr type");
 
         auto ctrlr_num = _get_ctrlr_num(id);
         if(ctrlr_num < 0)
@@ -531,7 +543,8 @@ public:
      */
     inline void warmup_filter()
     {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<NumPins>>::value,
+                      "Only applicable for AnalogCtrlr type");
         for(int i = 0; i < _num_ctrlrs; i++)
         {
             _ctrlrs[i].warmup_filter();
@@ -626,7 +639,8 @@ public:
      */
     CtrlrSet(__attribute__((unused)) GpioSysInterface* gpio_sys_interface)
     {
-        static_assert(std::is_same<CtrlrType, OutputCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, OutputCtrlr<0>>::value,
+                      "Only applicable for OutputCtrlr type");
     }
 
     /**
@@ -640,7 +654,8 @@ public:
     CtrlrSet(__attribute__((unused)) GpioSysInterface* gpio_sys_interface,
              __attribute__((unused)) GpioTxPacketFifo* gpio_tx_packet_fifo)
     {
-        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value,
+                      "Not applicable for OutputCtrlr type");
     }
 
     /**
@@ -723,7 +738,8 @@ public:
     constexpr GpioReturnStatus add_ctrlr(__attribute__((unused)) int id,
                                          __attribute__((unused)) GpioHwType type)
     {
-        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Not applicable for AnalogCtrlr type");
         return GPIO_NO_PINS_AVAILABLE;
     }
 
@@ -735,7 +751,8 @@ public:
      */
     constexpr GpioReturnStatus add_ctrlr(__attribute__((unused)) int id)
     {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Only applicable for AnalogCtrlr type");
 
         return GPIO_NO_PINS_AVAILABLE;
     }
@@ -766,7 +783,8 @@ public:
                                              __attribute__((unused)) uint32_t mux_pin,
                                              __attribute__((unused)) MuxCtrlrInterface* const mux_ctrlr_intf)
     {
-        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Not applicable for AnalogCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -783,7 +801,8 @@ public:
     constexpr GpioReturnStatus set_pol(__attribute__((unused)) int id,
                                        __attribute__((unused)) ControllerPolarity pol)
     {
-        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Not applicable for AnalogCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -800,7 +819,8 @@ public:
     constexpr GpioReturnStatus set_tick_rate(__attribute__((unused)) int id,
                                              __attribute__((unused)) int tick_rate)
     {
-        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value,
+                      "Not applicable for OutputCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -817,7 +837,8 @@ public:
     constexpr GpioReturnStatus set_notif_mode(__attribute__((unused)) int id,
                                               __attribute__((unused)) ControllerNotifMode notif_mode)
     {
-        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value);
+        static_assert(!std::is_same<CtrlrType, OutputCtrlr<0>>::value,
+                      "Not applicable for OutputCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -863,7 +884,8 @@ public:
     constexpr GpioReturnStatus set_res_diff(__attribute__((unused)) int analog_ctrlr_id,
                                             __attribute__((unused)) int adc_res_diff)
     {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Only applicable for AnalogCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -883,7 +905,8 @@ public:
                                          __attribute__((unused)) uint32_t max_val)
     {
         // Only applicable for InputCtrlr
-        static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value,
+                      "Only applicable for InputCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -900,7 +923,8 @@ public:
     constexpr GpioReturnStatus set_debounce_mode(__attribute__((unused)) int id,
                                                  __attribute__((unused)) ControllerDebounceMode debounce_mode)
     {
-        static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, InputCtrlr<0>>::value,
+                      "Only applicable for InputCtrlr type");
 
         return GPIO_INVALID_CONTROLLER_ID;
     }
@@ -917,7 +941,8 @@ public:
     constexpr GpioReturnStatus set_time_constant(__attribute__((unused)) int id,
                                                  __attribute__((unused)) float time_constant)
     {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Only applicable for AnalogCtrlr type");
         return GPIO_INVALID_CONTROLLER_ID;
     }
 
@@ -929,7 +954,8 @@ public:
      */
     inline void warmup_filter()
     {
-        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value);
+        static_assert(std::is_same<CtrlrType, AnalogCtrlr<0>>::value,
+                      "Only applicable for AnalogCtrlr type");
     }
 
     /**
